@@ -1,0 +1,186 @@
+# =========================================================
+# Chronicle - Git Ignore
+# =========================================================
+
+# ---------------------------------------------------------
+# Python
+# ---------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+develop-eggs/
+.eggs/
+pip-wheel-metadata/
+*.whl
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# ---------------------------------------------------------
+# Environment / Secrets
+# ---------------------------------------------------------
+.env
+.env.*
+!.env.example
+
+*.pem
+*.key
+*.crt
+secrets/
+credentials/
+*.secret
+
+# ---------------------------------------------------------
+# PostgreSQL / Database
+# ---------------------------------------------------------
+*.sql.gz
+*.dump
+*.backup
+*.sqlite
+*.sqlite3
+
+# Local database data
+database/data/
+postgres-data/
+.pgdata/
+
+# ---------------------------------------------------------
+# Machine Learning
+# ---------------------------------------------------------
+
+# Trained models can be large and should not normally be
+# committed directly to Git.
+ml/models/*
+!ml/models/.gitkeep
+
+# Datasets
+ml/datasets/*
+!ml/datasets/.gitkeep
+
+# ML experiment outputs
+ml/outputs/
+ml/runs/
+ml/checkpoints/
+
+# ---------------------------------------------------------
+# Research outputs
+# ---------------------------------------------------------
+research/results/*
+research/figures/*
+research/experiments/output/
+
+# Keep directory structure
+!research/results/.gitkeep
+!research/figures/.gitkeep
+
+# ---------------------------------------------------------
+# Node / React Dashboard
+# ---------------------------------------------------------
+node_modules/
+dashboard/node_modules/
+
+dashboard/dist/
+dashboard/build/
+dashboard/.vite/
+
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# ---------------------------------------------------------
+# Build / Packaging
+# ---------------------------------------------------------
+*.deb
+*.rpm
+*.AppImage
+
+packaging/build/
+packaging/output/
+
+# Temporary package files
+*.tar
+*.tar.gz
+
+# ---------------------------------------------------------
+# Linux Runtime Files
+# ---------------------------------------------------------
+*.pid
+*.sock
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+runtime/
+tmp/
+temp/
+
+# Chronicle local runtime data
+chronicle-data/
+chronicle-runtime/
+
+# ---------------------------------------------------------
+# IDE / Editors
+# ---------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ---------------------------------------------------------
+# OS Generated Files
+# ---------------------------------------------------------
+.Trashes
+Thumbs.db
+Desktop.ini
+
+# ---------------------------------------------------------
+# Docker
+# ---------------------------------------------------------
+.docker/
+docker-data/
+
+# ---------------------------------------------------------
+# Test / Coverage
+# ---------------------------------------------------------
+.pytest_cache/
+coverage.xml
+htmlcov/
+
+# ---------------------------------------------------------
+# Local Configuration
+# ---------------------------------------------------------
+configs/chronicle.yaml
+configs/local.yaml
+
+# Keep example configurations
+!configs/*.example.*
+
+# ---------------------------------------------------------
+# Generated Documentation
+# ---------------------------------------------------------
+docs/generated/
