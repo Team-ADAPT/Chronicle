@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chronicle — Host Behaviour Analysis System</title>
+  <!-- Google Fonts: Inter and JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" type="image/png" href="assets/icon.png">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top System Header Bar -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="app-logo">
+          <img src="assets/icon.png" alt="Chronicle Logo" class="logo-icon">
+          <div class="logo-text">
+            <div class="brand-title">CHRONICLE <span class="badge-version">v0.2.0-deb</span></div>
+            <div class="brand-subtitle">Host Behaviour Analysis & Activity Monitor</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <div class="system-status-pill">
+          <span class="status-dot pulsing"></span>
+          <span class="status-label">eBPF Telemetry: <strong>MONITORING</strong></span>
+        </div>
+        <div class="system-tag">
+          <span class="tag-icon">🐧</span>
+          <span>Linux 6.8.0-generic (x86_64)</span>
+        </div>
+        <div class="system-tag privacy-tag">
+          <span class="tag-icon">🔒</span>
+          <span>Local Storage Only (0B Outbound)</span>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <div class="clock-display" id="systemClock">00:00:00 UTC</div>
+        <button id="themeToggleBtn" class="icon-btn" title="Toggle Display Mode">⚙️</button>
+      </div>
+    </header>
+
+    <!-- Top KPI Metric Cards -->
+    <section class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-icon-wrap cyan">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        </div>
+        <div class="kpi-content">
+          <div class="kpi-label">Monitored Events</div>
+          <div class="kpi-value" id="kpiTotalEvents">1,428</div>
+          <div class="kpi-meta text-emerald">+24 events/min</div>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon-wrap emerald">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+        </div>
+        <div class="kpi-content">
+          <div class="kpi-label">Active Processes</div>
+          <div class="kpi-value" id="kpiActiveProcesses">42</div>
+          <div class="kpi-meta text-muted">Across 3 host users</div>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon-wrap amber">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div class="kpi-content">
+          <div class="kpi-label">ML Anomaly Alerts</div>
+          <div class="kpi-value text-amber" id="kpiAlertCount">3</div>
+          <div class="kpi-meta text-rose" id="kpiUnresolvedAlerts">3 requiring review</div>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon-wrap rose">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/></svg>
+        </div>
+        <div class="kpi-content">
+          <div class="kpi-label">Max Risk Score</div>
+          <div class="kpi-value text-rose" id="kpiMaxRisk">88<span class="kpi-unit">/100</span></div>
+          <div class="kpi-meta text-amber">High deviation detected</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Testing Toolbar: Inject Random Events, Toggle Live Stream, etc. -->
+    <div class="testing-toolbar">
+      <div class="toolbar-title-group">
+        <span class="test-badge">DEMO & TESTING CONTROLS</span>
+        <span class="test-desc">Simulate live Linux host activity and ML anomaly models</span>
+      </div>
+
+      <div class="toolbar-actions">
+        <button id="btnRandomEvent" class="btn btn-secondary">
+          <span class="btn-icon">⚡</span> Inject Random Event
+        </button>
+        <button id="btnInjectAnomaly" class="btn btn-danger">
+          <span class="btn-icon">🚨</span> Simulate High-Risk Anomaly
+        </button>
+        <button id="btnToggleStream" class="btn btn-primary">
+          <span class="btn-icon" id="streamIcon">▶</span> <span id="streamBtnText">Start Live Stream</span>
+        </button>
+        <button id="btnResetData" class="btn btn-ghost" title="Reset to initial test data">
+          <span class="btn-icon">🔄</span> Reset
+        </button>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="app-nav">
+      <button class="nav-tab active" data-tab="activityTab">
+        <span class="tab-icon">📋</span> Activity Stream & Tracker
+        <span class="tab-badge" id="eventBadgeCount">18</span>
+      </button>
+      <button class="nav-tab" data-tab="profilesTab">
+        <span class="tab-icon">📊</span> Behaviour Profiles
+      </button>
+      <button class="nav-tab" data-tab="alertsTab">
+        <span class="tab-icon">⚠️</span> Security Alerts
+        <span class="tab-badge badge-alert" id="alertBadgeCount">3</span>
+      </button>
+      <button class="nav-tab" data-tab="debTab">
+        <span class="tab-icon">📦</span> Debian (.deb) Packaging
+      </button>
+    </nav>
+
+    <!-- Tab 1: Live Activity Log (The Tracker) -->
+    <main class="tab-pane active" id="activityTab">
+      <div class="pane-header">
+        <div class="search-filter-group">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="eventSearchInput" placeholder="Filter by Process (comm), PID, User, or Event...">
+          </div>
+          <select id="eventTypeFilter" class="custom-select">
+            <option value="ALL">All Event Types</option>
+            <option value="execve">execve (Execution)</option>
+            <option value="fork">fork / clone</option>
+            <option value="socket_connect">socket_connect (Network)</option>
+            <option value="file_modify">file_modify / write</option>
+            <option value="priv_escalate">priv_escalate (Sudo)</option>
+          </select>
+          <select id="riskLevelFilter" class="custom-select">
+            <option value="ALL">All Risk Levels</option>
+            <option value="ANOMALOUS">Anomalous Only (Risk > 70)</option>
+            <option value="SUSPICIOUS">Suspicious Only (Risk 40-70)</option>
+            <option value="NORMAL">Normal Only (Risk < 40)</option>
+          </select>
+        </div>
+        <div class="pane-stats">
+          Showing <span id="visibleEventsCount">0</span> events
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table" id="eventsTable">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Process (comm)</th>
+              <th>PID / PPID</th>
+              <th>User</th>
+              <th>Action / Event</th>
+              <th>CPU Usage</th>
+              <th>RAM</th>
+              <th>Syscalls</th>
+              <th>Risk Score</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="eventsTableBody">
+            <!-- Populated via JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </main>
+
+    <!-- Tab 2: Process Behaviour Profiles -->
+    <div class="tab-pane" id="profilesTab">
+      <div class="profile-intro-banner">
+        <h3>Historical Behavioral Profiles</h3>
+        <p>Chronicle maintains rolling statistical baselines for each process name over a 30-day observation window. Incoming telemetry is continuously compared against historical distributions to calculate standard deviations (Z-scores).</p>
+      </div>
+
+      <div class="profiles-grid" id="profilesGrid">
+        <!-- Process Profile Cards Rendered by JS -->
+      </div>
+    </div>
+
+    <!-- Tab 3: Security Alerts Center -->
+    <div class="tab-pane" id="alertsTab">
+      <div class="pane-header">
+        <div>
+          <h3>Detected Anomaly Feed</h3>
+          <p class="text-muted">Behavioral deviations flagged by Chronicle's embedded ML scoring engine.</p>
+        </div>
+        <button id="btnAcknowledgeAll" class="btn btn-secondary">Acknowledge All</button>
+      </div>
+
+      <div class="alerts-container" id="alertsContainer">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+    <!-- Tab 4: Debian (.deb) Packaging & Distribution -->
+    <div class="tab-pane" id="debTab">
+      <div class="deb-package-container">
+        <div class="deb-card">
+          <div class="deb-card-header">
+            <div class="deb-icon">📦</div>
+            <div>
+              <h3>Debian .deb Distribution Package</h3>
+              <p class="text-muted">Pre-configured package blueprint for Ubuntu / Debian Linux distributions</p>
+            </div>
+          </div>
+
+          <div class="deb-details-grid">
+            <div class="deb-detail-item">
+              <span class="detail-label">Package Name</span>
+              <span class="detail-value">chronicle</span>
+            </div>
+            <div class="deb-detail-item">
+              <span class="detail-label">Version</span>
+              <span class="detail-value">0.2.0-1</span>
+            </div>
+            <div class="deb-detail-item">
+              <span class="detail-label">Architecture</span>
+              <span class="detail-value">amd64 / all</span>
+            </div>
+            <div class="deb-detail-item">
+              <span class="detail-label">Installation Path</span>
+              <span class="detail-value">/opt/chronicle</span>
+            </div>
+            <div class="deb-detail-item">
+              <span class="detail-label">Desktop Entry</span>
+              <span class="detail-value">/usr/share/applications/chronicle.desktop</span>
+            </div>
+            <div class="deb-detail-item">
+              <span class="detail-label">Internals Protection</span>
+              <span class="detail-value text-emerald">Compiled Standalone Binary (Black-Box)</span>
+            </div>
+          </div>
+
+          <div class="deb-code-section">
+            <div class="code-title">1. How to Build the .deb Package on Linux</div>
+            <pre class="code-block"><code>chmod +x packaging/build_deb.sh
+./packaging/build_deb.sh</code></pre>
+
+            <div class="code-title">2. How Users Install the .deb File</div>
+            <pre class="code-block"><code>sudo dpkg -i chronicle_0.2.0-1_amd64.deb</code></pre>
+            <p class="text-muted mt-2">After installation, Chronicle immediately appears in Ubuntu's <strong>Applications Launcher</strong> with its custom desktop icon and can be launched with 1 click.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Process Detail Modal Drawer -->
+    <div class="modal-overlay" id="processModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <h2 id="modalProcessName">python3 (PID 4192)</h2>
+            <span class="badge" id="modalRiskBadge">Risk: 88/100</span>
+          </div>
+          <button class="close-btn" id="closeModalBtn">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody">
+          <!-- Dynamic details injected here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="footer-left">
+        <span>CHRONICLE Host Behavioural Analysis System</span>
+        <span class="footer-divider">•</span>
+        <span>Graphic Era (Deemed to be University)</span>
+        <span class="footer-divider">•</span>
+        <span>OSDBMS-V-2026-T-005</span>
+      </div>
+      <div class="footer-right">
+        <span class="dot-online"></span> Engine Active (Simulated Kernel Mode)
+      </div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
