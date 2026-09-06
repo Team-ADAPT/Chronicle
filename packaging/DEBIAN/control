@@ -1,0 +1,11 @@
+Package: chronicle
+Version: 0.2.0-1
+Section: utils
+Priority: optional
+Architecture: amd64
+Maintainer: Chronicle Project Team <team@chronicle.local>
+Depends: libc6 (>= 2.31)
+Description: Intelligent Host Behaviour Analysis & Activity Monitor
+ Chronicle is a Linux-based host behavioral analysis system designed to track
+ and evaluate process activity against historical baselines to detect deviations,
+ anomalies, and misuse with local-first privacy guarantees.
