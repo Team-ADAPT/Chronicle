@@ -184,3 +184,6 @@ configs/local.yaml
 # Generated Documentation
 # ---------------------------------------------------------
 docs/generated/
+
+Project.md
+COMMIT_LOG.md
