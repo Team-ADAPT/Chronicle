@@ -65,24 +65,7 @@ Chronicle Dashboard
 
 ## Technology Stack
 
-**Linux, eBPF, Python, PostgreSQL, SQL, Pandas, NumPy, Scikit-learn, FastAPI, React, JavaScript, HTML/CSS, systemd, Debian/RPM, Git, GitHub**
-
----
-
-## Project Status
-
-**Phase 1 — Planning & Architecture**
-
-Current work focuses on:
-
-* Literature review
-* Requirement analysis
-* System architecture
-* Database design
-* eBPF telemetry research
-* Behavioural profiling strategy
-* Detection methodology
-* Evaluation planning
+**Linux, eBPF, Python, PostgreSQL/SQLite, SQL, Pandas, NumPy, Scikit-learn, pywebview, JavaScript, HTML5/CSS3, systemd, Debian .deb, Git, GitHub**
 
 ---
 
