@@ -1,143 +1,203 @@
 /* =========================================================
    Chronicle — Old School Retro System Activity Monitor
-   Aesthetic: Authentic 90s Workstation (Windows 95 / SGI IRIX / NeXT)
-              & Retro Cyber CRT Phosphor Terminal
-   Features: True 3D Bevels, Monospace Data Grids, Inset CRT Panels,
-             Mechanical Depress Buttons, and Oscilloscope Charts.
+   Color Palette: Soft Pastel Aesthetics (Pastel Mint, Peach, Sky,
+                  Lilac, Rose & Butter) with Authentic 3D Bevels
    ========================================================= */
 
-/* --- 1. COLOR & BEVEL PALETTES --- */
+/* --- 1. PASTEL RETRO COLOR & BEVEL PALETTES --- */
 :root, [data-theme="light"] {
-  --theme: 'classic-retro';
+  --theme: 'pastel-retro';
 
-  /* Desktop Wallpaper */
-  --desktop-bg: #008080; /* Iconic Retro Windows/Workstation Teal */
-  --desktop-pattern: radial-gradient(rgba(0, 0, 0, 0.15) 1px, transparent 0);
+  /* Desktop Wallpaper (Soft Pastel Sage / Mint with Retro Dot Matrix) */
+  --desktop-bg: #d6e8e0;
+  --desktop-pattern: radial-gradient(rgba(88, 126, 110, 0.22) 1px, transparent 0);
 
-  /* Chassis & Frame */
-  --chassis-bg: #d4d0c8;
-  --chassis-surface: #d4d0c8;
-  --chassis-subtle: #ece9d8;
-  --window-bg: #d4d0c8;
+  /* Chassis & Frame (Soft Warm Vintage Ecru / Cream) */
+  --chassis-bg: #eae6dd;
+  --chassis-surface: #eae6dd;
+  --chassis-subtle: #f5f2eb;
+  --window-bg: #eae6dd;
 
   /* Inset Wells (Panels, Tables, Input Fields) */
-  --inset-bg: #ffffff;
-  --inset-bg-subtle: #f6f6f4;
-  --inset-dark-crt: #0a0e14;
+  --inset-bg: #fbfbf9;
+  --inset-bg-subtle: #f3f0e8;
+  --inset-dark-crt: #141920;
 
-  /* 3D Bevel System (Classic 90s Inset / Outset) */
+  /* 3D Bevel System (Softened Vintage Bevels) */
   --bevel-light: #ffffff;
-  --bevel-highlight: #dfdfdf;
-  --bevel-shadow: #808080;
-  --bevel-dark: #404040;
+  --bevel-highlight: #f8f6f1;
+  --bevel-shadow: #c2bcb0;
+  --bevel-dark: #8c8678;
 
-  /* Titlebars */
-  --titlebar-bg: linear-gradient(90deg, #000080 0%, #1084d0 100%);
+  /* Titlebars (Pastel Periwinkle / Dusty Sky Gradient) */
+  --titlebar-bg: linear-gradient(90deg, #5b7a99 0%, #7b9ab8 100%);
   --titlebar-text: #ffffff;
-  --titlebar-sub: #c0d8f0;
+  --titlebar-sub: #dbe6f2;
 
   /* Typography */
-  --text-main: #000000;
-  --text-secondary: #222222;
-  --text-muted: #555555;
-  --text-crt-green: #00e65b;
-  --text-crt-amber: #ffaa00;
-  --text-crt-cyan: #00f0ff;
+  --text-main: #1e242b;
+  --text-secondary: #3b4552;
+  --text-muted: #6b7787;
+  --text-crt-green: #5eead4;
+  --text-crt-amber: #fcd34d;
+  --text-crt-cyan: #7dd3fc;
+
+  /* Pastel Palette Tokens */
+  --pastel-mint: #a7e8bd;
+  --pastel-mint-dark: #1b6343;
+  --pastel-mint-bg: #ebf9f2;
+  --pastel-mint-border: #bbf0d0;
+
+  --pastel-coral: #ffc4a8;
+  --pastel-coral-dark: #9e481c;
+  --pastel-coral-bg: #fff1e8;
+  --pastel-coral-border: #ffd7c4;
+
+  --pastel-sky: #b3d9ff;
+  --pastel-sky-dark: #1b5a94;
+  --pastel-sky-bg: #edf5fe;
+  --pastel-sky-border: #cbe3fe;
+
+  --pastel-lilac: #d9c5f8;
+  --pastel-lilac-dark: #5e3594;
+  --pastel-lilac-bg: #f5eefd;
+  --pastel-lilac-border: #e4d5fb;
+
+  --pastel-rose: #ffb8c6;
+  --pastel-rose-dark: #9e233c;
+  --pastel-rose-bg: #fff0f3;
+  --pastel-rose-border: #ffd0da;
+
+  --pastel-butter: #ffe699;
+  --pastel-butter-dark: #8c630d;
+  --pastel-butter-bg: #fffbf0;
+  --pastel-butter-border: #ffefa8;
 
   /* System Accent Highlights */
-  --retro-navy: #000080;
-  --retro-green: #008000;
-  --retro-amber: #b8860b;
-  --retro-red: #c00000;
-  --retro-blue: #0000ee;
+  --retro-navy: #4a6888;
+  --retro-green: #2e8b57;
+  --retro-amber: #c28819;
+  --retro-red: #c94a5c;
+  --retro-blue: #3b82f6;
 
-  /* Table Inverted Selection */
-  --table-select-bg: #000080;
+  /* Table Inverted Selection (Pastel Slate-Periwinkle) */
+  --table-select-bg: #4f6e91;
   --table-select-text: #ffffff;
 
-  /* Heatmap Tints (Retro Solid Highlight Blocks) */
-  --heat-cpu-high-bg: #ff2a4b;
-  --heat-cpu-high-text: #ffffff;
-  --heat-cpu-med-bg: #ffaa00;
-  --heat-cpu-med-text: #000000;
-  --heat-mem-high-bg: #2a75d3;
-  --heat-mem-high-text: #ffffff;
+  /* Heatmap Tints (Soft Pastel Highlights) */
+  --heat-cpu-high-bg: #ffd6de;
+  --heat-cpu-high-text: #8f172e;
+  --heat-cpu-med-bg: #ffe8cc;
+  --heat-cpu-med-text: #8c4c12;
+  --heat-mem-high-bg: #dbeafe;
+  --heat-mem-high-text: #1e40af;
 
   /* Status Bar */
-  --statusbar-bg: #d4d0c8;
-  --statusbar-text: #000000;
+  --statusbar-bg: #eae6dd;
+  --statusbar-text: #1e242b;
 
   /* Diodes */
-  --led-green: #00ff66;
-  --led-red: #ff3344;
-  --led-amber: #ffbb00;
+  --led-green: #34d399;
+  --led-red: #f87171;
+  --led-amber: #fbbf24;
 }
 
-/* --- CYBER CRT / VINTAGE PHOSPHOR TERMINAL (Dark Mode) --- */
+/* --- CYBER CRT / VINTAGE PHOSPHOR TERMINAL (Dark Pastel Mode) --- */
 [data-theme="dark"] {
-  --theme: 'cyber-crt';
+  --theme: 'dark-pastel';
 
-  /* Desktop Wallpaper */
-  --desktop-bg: #080c10;
-  --desktop-pattern: radial-gradient(rgba(0, 255, 102, 0.08) 1px, transparent 0);
+  /* Desktop Wallpaper (Moody Midnight Slate) */
+  --desktop-bg: #0f131a;
+  --desktop-pattern: radial-gradient(rgba(110, 231, 183, 0.10) 1px, transparent 0);
 
-  /* Chassis & Frame */
-  --chassis-bg: #1c222a;
-  --chassis-surface: #1c222a;
-  --chassis-subtle: #161a22;
-  --window-bg: #181d24;
+  /* Chassis & Frame (Subtle Industrial Charcoal Slate) */
+  --chassis-bg: #1a202c;
+  --chassis-surface: #1a202c;
+  --chassis-subtle: #141822;
+  --window-bg: #161b26;
 
   /* Inset Wells */
-  --inset-bg: #0c1015;
-  --inset-bg-subtle: #0f141a;
-  --inset-dark-crt: #05080c;
+  --inset-bg: #0f131b;
+  --inset-bg-subtle: #121720;
+  --inset-dark-crt: #080a10;
 
-  /* 3D Bevel System (Dark Steel Workstation) */
-  --bevel-light: #3d4958;
-  --bevel-highlight: #2f3844;
-  --bevel-shadow: #0e1216;
-  --bevel-dark: #07090b;
+  /* 3D Bevel System (Dark Metallic Bevels) */
+  --bevel-light: #333d4e;
+  --bevel-highlight: #272f3e;
+  --bevel-shadow: #0f131b;
+  --bevel-dark: #090c12;
 
   /* Titlebars */
-  --titlebar-bg: linear-gradient(90deg, #172433 0%, #26384d 100%);
-  --titlebar-text: #00ff66;
-  --titlebar-sub: #7db4d8;
+  --titlebar-bg: linear-gradient(90deg, #1f2738 0%, #2f3b52 100%);
+  --titlebar-text: #86efac;
+  --titlebar-sub: #93c5fd;
 
   /* Typography */
-  --text-main: #e2e8f0;
-  --text-secondary: #a0aec0;
-  --text-muted: #718096;
-  --text-crt-green: #00ff66;
-  --text-crt-amber: #ffaa00;
-  --text-crt-cyan: #00f0ff;
+  --text-main: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-crt-green: #6ee7b7;
+  --text-crt-amber: #fde047;
+  --text-crt-cyan: #7dd3fc;
+
+  /* Dark Pastel Palette Tokens */
+  --pastel-mint: #6ee7b7;
+  --pastel-mint-dark: #a7f3d0;
+  --pastel-mint-bg: rgba(110, 231, 183, 0.12);
+  --pastel-mint-border: rgba(110, 231, 183, 0.35);
+
+  --pastel-coral: #fdba74;
+  --pastel-coral-dark: #fed7aa;
+  --pastel-coral-bg: rgba(253, 186, 116, 0.12);
+  --pastel-coral-border: rgba(253, 186, 116, 0.35);
+
+  --pastel-sky: #93c5fd;
+  --pastel-sky-dark: #bfdbfe;
+  --pastel-sky-bg: rgba(147, 197, 253, 0.12);
+  --pastel-sky-border: rgba(147, 197, 253, 0.35);
+
+  --pastel-lilac: #c4b5fd;
+  --pastel-lilac-dark: #ddd6fe;
+  --pastel-lilac-bg: rgba(196, 181, 253, 0.12);
+  --pastel-lilac-border: rgba(196, 181, 253, 0.35);
+
+  --pastel-rose: #fca5a5;
+  --pastel-rose-dark: #fecaca;
+  --pastel-rose-bg: rgba(252, 165, 165, 0.12);
+  --pastel-rose-border: rgba(252, 165, 165, 0.35);
+
+  --pastel-butter: #fde047;
+  --pastel-butter-dark: #fef08a;
+  --pastel-butter-bg: rgba(253, 224, 71, 0.12);
+  --pastel-butter-border: rgba(253, 224, 71, 0.35);
 
   /* System Accent Highlights */
-  --retro-navy: #1e3a8a;
-  --retro-green: #10b981;
-  --retro-amber: #f59e0b;
-  --retro-red: #f43f5e;
-  --retro-blue: #38bdf8;
+  --retro-navy: #38bdf8;
+  --retro-green: #34d399;
+  --retro-amber: #fbbf24;
+  --retro-red: #f87171;
+  --retro-blue: #60a5fa;
 
   /* Table Inverted Selection */
-  --table-select-bg: #003d66;
-  --table-select-text: #00ffff;
+  --table-select-bg: #1e3a5f;
+  --table-select-text: #7dd3fc;
 
-  /* Heatmap Tints (Dark CRT) */
-  --heat-cpu-high-bg: #7f1d1d;
-  --heat-cpu-high-text: #fecaca;
-  --heat-cpu-med-bg: #78350f;
-  --heat-cpu-med-text: #fef3c7;
-  --heat-mem-high-bg: #1e3a8a;
-  --heat-mem-high-text: #dbeafe;
+  /* Heatmap Tints (Dark Mode) */
+  --heat-cpu-high-bg: #451a24;
+  --heat-cpu-high-text: #fecdd3;
+  --heat-cpu-med-bg: #422612;
+  --heat-cpu-med-text: #fef08a;
+  --heat-mem-high-bg: #172d4d;
+  --heat-mem-high-text: #bfdbfe;
 
   /* Status Bar */
-  --statusbar-bg: #161a22;
-  --statusbar-text: #00ff66;
+  --statusbar-bg: #141822;
+  --statusbar-text: #86efac;
 
   /* Diodes */
-  --led-green: #00ff66;
-  --led-red: #ff3344;
-  --led-amber: #ffbb00;
+  --led-green: #34d399;
+  --led-red: #f87171;
+  --led-amber: #fbbf24;
 }
 
 /* --- 2. GLOBAL RESET & BASE STYLES --- */
@@ -160,13 +220,14 @@ body {
   padding: 16px 12px;
   -webkit-font-smoothing: antialiased;
   letter-spacing: -0.01em;
+  transition: background-color 0.25s ease;
 }
 
 .font-mono {
   font-family: 'JetBrains Mono', 'Courier New', monospace;
 }
 
-/* Outer Window Frame with Authentic 3D Bevels */
+/* Outer Window Frame with 3D Bevels */
 .dashboard-canvas {
   width: 100%;
   max-width: 1500px;
@@ -175,14 +236,13 @@ body {
 
 .dashboard-window {
   background: var(--chassis-bg);
-  /* Classic 3D Double Raised Bevel */
   border-top: 2px solid var(--bevel-light);
   border-left: 2px solid var(--bevel-light);
   border-right: 2px solid var(--bevel-dark);
   border-bottom: 2px solid var(--bevel-dark);
   box-shadow: inset 1px 1px 0px var(--bevel-highlight), 
               inset -1px -1px 0px var(--bevel-shadow), 
-              4px 4px 16px rgba(0, 0, 0, 0.45);
+              4px 6px 20px rgba(0, 0, 0, 0.25);
   display: grid;
   grid-template-columns: 240px 1fr 310px;
   grid-template-rows: auto 1fr auto;
@@ -192,7 +252,7 @@ body {
 }
 
 /* =========================================================
-   3. RETRO WINDOW TITLEBAR
+   3. RETRO WINDOW TITLEBAR (Pastel Periwinkle Gradient)
    ========================================================= */
 .retro-titlebar {
   grid-column: 1 / -1;
@@ -222,12 +282,12 @@ body {
 .retro-titlebar-center {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .retro-titlebar-chip {
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   color: var(--titlebar-sub);
   font-size: 0.68rem;
   font-weight: 700;
@@ -242,7 +302,7 @@ body {
 
 .retro-win-btn {
   background: var(--chassis-bg);
-  color: #000000;
+  color: var(--text-main);
   border-top: 2px solid var(--bevel-light);
   border-left: 2px solid var(--bevel-light);
   border-right: 2px solid var(--bevel-dark);
@@ -272,7 +332,7 @@ body {
 }
 
 /* =========================================================
-   4. LEFT SIDEBAR (Retro Control Navigation)
+   4. LEFT SIDEBAR (Retro Pastel Navigation)
    ========================================================= */
 .sidebar {
   background: var(--chassis-surface);
@@ -289,7 +349,6 @@ body {
   align-items: center;
   gap: 10px;
   padding: 6px 8px;
-  /* Inset brand well */
   background: var(--inset-bg-subtle);
   border-top: 2px solid var(--bevel-shadow);
   border-left: 2px solid var(--bevel-shadow);
@@ -300,7 +359,7 @@ body {
 .brand-logo {
   width: 32px;
   height: 32px;
-  border: 1px solid var(--bevel-dark);
+  border: 1px solid var(--bevel-shadow);
   image-rendering: pixelated;
 }
 
@@ -317,26 +376,26 @@ body {
   font-size: 0.62rem;
   font-weight: 800;
   text-transform: uppercase;
-  background: var(--retro-navy);
-  color: #ffffff;
+  background: var(--pastel-mint-bg);
+  color: var(--pastel-mint-dark);
+  border: 1px solid var(--pastel-mint-border);
   padding: 1px 5px;
-  border: 1px solid var(--bevel-dark);
   margin-top: 2px;
 }
 
-/* Retro Mechanical Action Button (+ Simulate Event) */
+/* Pastel Mint Mechanical Action Button (+ Simulate Event) */
 .sidebar-action {
   margin: 2px 0 6px 0;
 }
 
 .btn-create {
   width: 100%;
-  background: var(--chassis-bg);
-  color: var(--text-main);
-  border-top: 2px solid var(--bevel-light);
-  border-left: 2px solid var(--bevel-light);
-  border-right: 2px solid var(--bevel-dark);
-  border-bottom: 2px solid var(--bevel-dark);
+  background: var(--pastel-mint-bg);
+  color: var(--pastel-mint-dark);
+  border-top: 2px solid #ffffff;
+  border-left: 2px solid #ffffff;
+  border-right: 2px solid var(--pastel-mint-dark);
+  border-bottom: 2px solid var(--pastel-mint-dark);
   padding: 10px 12px;
   font-size: 0.8rem;
   font-weight: 800;
@@ -347,23 +406,24 @@ body {
   gap: 8px;
   cursor: pointer;
   text-transform: uppercase;
-  box-shadow: inset 1px 1px 0px var(--bevel-highlight);
+  box-shadow: inset 1px 1px 0px rgba(255, 255, 255, 0.8);
 }
 
 .btn-create:hover {
-  background: var(--chassis-subtle);
+  background: var(--pastel-mint);
+  color: var(--pastel-mint-dark);
 }
 
 .btn-create:active {
-  border-top: 2px solid var(--bevel-dark);
-  border-left: 2px solid var(--bevel-dark);
-  border-right: 2px solid var(--bevel-light);
-  border-bottom: 2px solid var(--bevel-light);
+  border-top: 2px solid var(--pastel-mint-dark);
+  border-left: 2px solid var(--pastel-mint-dark);
+  border-right: 2px solid #ffffff;
+  border-bottom: 2px solid #ffffff;
   transform: translate(1px, 1px);
 }
 
 .btn-plus {
-  color: var(--retro-green);
+  color: var(--pastel-mint-dark);
   font-size: 1.1rem;
   font-weight: 900;
 }
@@ -427,7 +487,7 @@ body {
 }
 
 .menu-badge {
-  background: var(--retro-red);
+  background: var(--pastel-rose-dark);
   color: #ffffff;
   font-size: 0.65rem;
   font-weight: 900;
@@ -477,7 +537,7 @@ body {
 }
 
 /* =========================================================
-   5. CENTER MAIN CONTENT AREA (The Workstation Workspace)
+   5. CENTER MAIN CONTENT AREA
    ========================================================= */
 .main-content {
   padding: 14px 16px;
@@ -498,7 +558,7 @@ body {
   box-shadow: 0 1px 0 var(--bevel-light);
 }
 
-/* Retro Sunken Text Input */
+/* Sunken Text Input */
 .search-box {
   flex: 1;
   max-width: 440px;
@@ -547,7 +607,7 @@ body {
   padding: 1px 5px;
 }
 
-/* Top Action Controls (Inspect, End Task, Live Stream, Theme) */
+/* Top Action Controls */
 .top-action-bar {
   display: flex;
   align-items: center;
@@ -585,12 +645,13 @@ body {
 }
 
 .btn-tool.danger {
-  color: var(--retro-red);
+  color: var(--pastel-rose-dark);
+  background: var(--pastel-rose-bg);
 }
 
 .btn-tool.live-active {
-  background: var(--inset-dark-crt);
-  color: var(--text-crt-green);
+  background: var(--pastel-mint-bg);
+  color: var(--pastel-mint-dark);
   border-top: 2px solid var(--bevel-dark);
   border-left: 2px solid var(--bevel-dark);
   border-right: 2px solid var(--bevel-light);
@@ -605,7 +666,7 @@ body {
   border-radius: 50%;
 }
 
-/* Retro Theme Switcher */
+/* Theme Switcher */
 .btn-theme-toggle {
   background: var(--chassis-bg);
   border-top: 2px solid var(--bevel-light);
@@ -650,7 +711,7 @@ body {
 }
 
 /* =========================================================
-   6. RETRO TABSTRIP (Apple Activity Monitor & Win95 Property Tabs)
+   6. PASTEL TABSTRIP (Property Sheets)
    ========================================================= */
 .activity-segmented-bar {
   display: flex;
@@ -689,11 +750,11 @@ body {
 }
 
 .seg-tab.text-danger {
-  color: var(--retro-red);
+  color: var(--pastel-rose-dark);
 }
 
 /* =========================================================
-   7. 4 METRIC KPI MODULES (Retro Diagnostic Rack Equipment)
+   7. 4 METRIC KPI CARDS (Rich Pastel Modular Enclosures)
    ========================================================= */
 .kpi-pastel-grid {
   display: grid;
@@ -703,8 +764,6 @@ body {
 }
 
 .kpi-card {
-  background: var(--chassis-bg);
-  /* Raised module frame */
   border-top: 2px solid var(--bevel-light);
   border-left: 2px solid var(--bevel-light);
   border-right: 2px solid var(--bevel-dark);
@@ -714,6 +773,54 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+/* Pastel Mint Card */
+.kpi-card.pastel-lime {
+  background: var(--pastel-mint-bg);
+  border-color: var(--bevel-light) var(--pastel-mint-border) var(--pastel-mint-border) var(--bevel-light);
+}
+.kpi-card.pastel-lime .kpi-badge { color: var(--pastel-mint-dark); }
+.kpi-card.pastel-lime .kpi-value { color: var(--pastel-mint-dark); }
+.kpi-card.pastel-lime .kpi-card-middle {
+  background: rgba(167, 232, 189, 0.25);
+  border-color: var(--bevel-shadow) var(--bevel-light) var(--bevel-light) var(--bevel-shadow);
+}
+
+/* Pastel Peach / Coral Card */
+.kpi-card.pastel-coral {
+  background: var(--pastel-coral-bg);
+  border-color: var(--bevel-light) var(--pastel-coral-border) var(--pastel-coral-border) var(--bevel-light);
+}
+.kpi-card.pastel-coral .kpi-badge { color: var(--pastel-coral-dark); }
+.kpi-card.pastel-coral .kpi-value { color: var(--pastel-coral-dark); }
+.kpi-card.pastel-coral .kpi-card-middle {
+  background: rgba(255, 196, 168, 0.25);
+  border-color: var(--bevel-shadow) var(--bevel-light) var(--bevel-light) var(--bevel-shadow);
+}
+
+/* Pastel Sky Card */
+.kpi-card.pastel-cyan {
+  background: var(--pastel-sky-bg);
+  border-color: var(--bevel-light) var(--pastel-sky-border) var(--pastel-sky-border) var(--bevel-light);
+}
+.kpi-card.pastel-cyan .kpi-badge { color: var(--pastel-sky-dark); }
+.kpi-card.pastel-cyan .kpi-value { color: var(--pastel-sky-dark); }
+.kpi-card.pastel-cyan .kpi-card-middle {
+  background: rgba(179, 217, 255, 0.25);
+  border-color: var(--bevel-shadow) var(--bevel-light) var(--bevel-light) var(--bevel-shadow);
+}
+
+/* Pastel Lilac / Purple Card */
+.kpi-card.pastel-purple {
+  background: var(--pastel-lilac-bg);
+  border-color: var(--bevel-light) var(--pastel-lilac-border) var(--pastel-lilac-border) var(--bevel-light);
+}
+.kpi-card.pastel-purple .kpi-badge { color: var(--pastel-lilac-dark); }
+.kpi-card.pastel-purple .kpi-value { color: var(--pastel-lilac-dark); }
+.kpi-card.pastel-purple .kpi-card-middle {
+  background: rgba(217, 197, 248, 0.25);
+  border-color: var(--bevel-shadow) var(--bevel-light) var(--bevel-light) var(--bevel-shadow);
 }
 
 .kpi-card-top {
@@ -728,16 +835,14 @@ body {
   font-size: 0.68rem;
   font-weight: 800;
   text-transform: uppercase;
-  color: var(--text-secondary);
 }
 
 .kpi-icon-wrap {
   font-size: 0.85rem;
 }
 
-/* Inset Digital Readout Panel */
+/* Digital Inset Readout */
 .kpi-card-middle {
-  background: var(--inset-dark-crt);
   border-top: 2px solid var(--bevel-dark);
   border-left: 2px solid var(--bevel-dark);
   border-right: 2px solid var(--bevel-light);
@@ -752,11 +857,6 @@ body {
   font-family: 'JetBrains Mono', monospace;
 }
 
-.pastel-lime .kpi-value { color: var(--text-crt-green); }
-.pastel-coral .kpi-value { color: var(--text-crt-amber); }
-.pastel-cyan .kpi-value { color: var(--text-crt-cyan); }
-.pastel-purple .kpi-value { color: #d8b4fe; }
-
 .kpi-denom {
   font-size: 0.72rem;
   color: var(--text-muted);
@@ -764,13 +864,13 @@ body {
 
 .kpi-subtext {
   font-size: 0.66rem;
-  color: #94a3b8;
+  color: var(--text-muted);
   margin-top: 2px;
 }
 
 .kpi-sparkline {
   height: 24px;
-  background: var(--inset-dark-crt);
+  background: var(--inset-bg);
   border: 1px solid var(--bevel-shadow);
   padding: 2px;
 }
@@ -780,10 +880,10 @@ body {
   height: 100%;
 }
 
-/* Segmented LED Bar Progress Meter */
+/* Segmented Pastel Progress Track */
 .kpi-progress-track {
   height: 8px;
-  background: #111;
+  background: #e2ddd3;
   border: 1px solid var(--bevel-shadow);
   overflow: hidden;
   margin-top: 4px;
@@ -791,7 +891,7 @@ body {
 
 .kpi-progress-bar.coral {
   height: 100%;
-  background: repeating-linear-gradient(90deg, #ffaa00 0, #ffaa00 6px, #111 6px, #111 8px);
+  background: repeating-linear-gradient(90deg, var(--pastel-coral) 0, var(--pastel-coral) 6px, #e2ddd3 6px, #e2ddd3 8px);
 }
 
 .kpi-status-tag {
@@ -801,7 +901,7 @@ body {
 }
 
 /* =========================================================
-   8. PROCESS CLUSTERS (Retro Volume / Directory Tree)
+   8. PROCESS CLUSTERS (Pastel Directory Tints)
    ========================================================= */
 .section-title-row {
   display: flex;
@@ -831,7 +931,7 @@ body {
 .section-link {
   font-size: 0.74rem;
   font-weight: 800;
-  color: var(--retro-blue);
+  color: var(--pastel-sky-dark);
   cursor: pointer;
   text-decoration: underline;
 }
@@ -888,6 +988,12 @@ body {
   padding: 1px 5px;
 }
 
+/* Cluster Pastel Badge Details */
+.cluster-card[data-filter="systemd"] .cluster-badge { background: var(--pastel-mint-bg); color: var(--pastel-mint-dark); border-color: var(--pastel-mint-border); }
+.cluster-card[data-filter="nginx"] .cluster-badge { background: var(--pastel-sky-bg); color: var(--pastel-sky-dark); border-color: var(--pastel-sky-border); }
+.cluster-card[data-filter="bash"] .cluster-badge { background: var(--pastel-coral-bg); color: var(--pastel-coral-dark); border-color: var(--pastel-coral-border); }
+.cluster-card[data-filter="dockerd"] .cluster-badge { background: var(--pastel-lilac-bg); color: var(--pastel-lilac-dark); border-color: var(--pastel-lilac-border); }
+
 .cluster-name {
   font-size: 0.8rem;
   font-weight: 900;
@@ -901,7 +1007,7 @@ body {
 }
 
 /* =========================================================
-   9. PROCESS TABLE & TASK MANAGER RETRO HEATMAP
+   9. PROCESS TABLE & RETRO PASTEL HEATMAP
    ========================================================= */
 .table-action-group {
   display: flex;
@@ -937,7 +1043,7 @@ body {
   transform: translate(1px, 1px);
 }
 
-/* Inset Retro Table Well */
+/* Inset Table Well */
 .table-card {
   background: var(--inset-bg);
   border-top: 2px solid var(--bevel-dark);
@@ -992,10 +1098,10 @@ body {
 }
 
 .recent-table tbody tr:hover {
-  background: rgba(0, 0, 128, 0.08);
+  background: rgba(91, 122, 153, 0.12);
 }
 
-/* Retro Inverted Solid Selection (Classic Windows 95 / Norton Commander) */
+/* Retro Inverted Solid Selection (Pastel Slate-Periwinkle) */
 .recent-table tbody tr.row-selected {
   background: var(--table-select-bg) !important;
   color: var(--table-select-text) !important;
@@ -1014,7 +1120,7 @@ body {
   color: rgba(255, 255, 255, 0.8) !important;
 }
 
-/* Heatmap Tints */
+/* Pastel Heatmap Tints */
 td.heat-cpu-high {
   background: var(--heat-cpu-high-bg) !important;
   color: var(--heat-cpu-high-text) !important;
@@ -1059,29 +1165,32 @@ td.heat-mem-high {
   color: var(--text-muted);
 }
 
-/* Retro Status Pills */
+/* Pastel Status Pills */
 .risk-pill {
   display: inline-block;
-  padding: 1px 6px;
+  padding: 2px 7px;
   font-size: 0.68rem;
   font-weight: 800;
-  border: 1px solid var(--bevel-dark);
+  border: 1px solid;
   text-transform: uppercase;
 }
 
 .risk-pill.safe {
-  background: var(--retro-green);
-  color: #ffffff;
+  background: var(--pastel-mint-bg);
+  color: var(--pastel-mint-dark);
+  border-color: var(--pastel-mint-border);
 }
 
 .risk-pill.warn {
-  background: var(--retro-amber);
-  color: #000000;
+  background: var(--pastel-butter-bg);
+  color: var(--pastel-butter-dark);
+  border-color: var(--pastel-butter-border);
 }
 
 .risk-pill.danger {
-  background: var(--retro-red);
-  color: #ffffff;
+  background: var(--pastel-rose-bg);
+  color: var(--pastel-rose-dark);
+  border-color: var(--pastel-rose-border);
 }
 
 .btn-row-action {
@@ -1108,7 +1217,7 @@ td.heat-mem-high {
 }
 
 /* =========================================================
-   10. BOTTOM OSCILLOSCOPE CHARTS (Vintage Lab Equipment)
+   10. BOTTOM CHARTS SECTION (Pastel Oscilloscope & Waveform)
    ========================================================= */
 .charts-section-grid {
   display: grid;
@@ -1152,13 +1261,13 @@ td.heat-mem-high {
 .chart-stat-pill {
   font-size: 0.68rem;
   font-weight: 800;
-  background: var(--inset-dark-crt);
-  color: var(--text-crt-green);
+  background: var(--pastel-mint-bg);
+  color: var(--pastel-mint-dark);
   padding: 2px 6px;
-  border: 1px solid var(--bevel-shadow);
+  border: 1px solid var(--pastel-mint-border);
 }
 
-/* Inset Oscilloscope CRT Screen */
+/* Inset Oscilloscope Screen */
 .chart-canvas-wrap {
   flex: 1;
   height: 125px;
@@ -1179,14 +1288,14 @@ td.heat-mem-high {
 .chart-axis-text {
   font-family: 'JetBrains Mono', monospace;
   font-size: 9px;
-  fill: #64748b;
+  fill: #8598ad;
 }
 
 .chart-label-danger {
   font-family: 'JetBrains Mono', monospace;
   font-size: 9px;
   font-weight: 800;
-  fill: #ff3344;
+  fill: #fca5a5;
 }
 
 /* Donut Chart / Radial Dial */
@@ -1222,7 +1331,7 @@ td.heat-mem-high {
   display: block;
   font-size: 1.15rem;
   font-weight: 900;
-  color: var(--text-crt-green);
+  color: var(--pastel-mint);
 }
 
 .donut-center-sub {
@@ -1241,7 +1350,7 @@ td.heat-mem-high {
 }
 
 /* =========================================================
-   11. RIGHT ANALYTICS SIDEBAR (Vintage Instrumentation)
+   11. RIGHT ANALYTICS SIDEBAR
    ========================================================= */
 .analytics-sidebar {
   background: var(--chassis-surface);
@@ -1272,7 +1381,7 @@ td.heat-mem-high {
 .user-avatar {
   width: 34px;
   height: 34px;
-  border: 1px solid var(--bevel-dark);
+  border: 1px solid var(--bevel-shadow);
   image-rendering: pixelated;
 }
 
@@ -1299,7 +1408,7 @@ td.heat-mem-high {
   color: var(--text-muted);
 }
 
-/* Retro Tachometer / Threat Gauge Card */
+/* Retro Threat Dial Card */
 .gauge-card {
   background: var(--chassis-bg);
   border-top: 2px solid var(--bevel-light);
@@ -1348,7 +1457,7 @@ td.heat-mem-high {
 .gauge-number {
   font-size: 1.35rem;
   font-weight: 900;
-  color: var(--text-crt-green);
+  color: var(--pastel-mint);
 }
 
 .gauge-unit {
@@ -1388,16 +1497,16 @@ td.heat-mem-high {
   height: 7px;
   border-radius: 50%;
   display: inline-block;
-  border: 1px solid rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(0, 0, 0, 0.3);
 }
 
-.dot.emerald { background: var(--retro-green); }
-.dot.blue { background: var(--retro-blue); }
-.dot.amber { background: var(--retro-amber); }
-.dot.rose { background: var(--retro-red); }
+.dot.emerald { background: var(--pastel-mint); }
+.dot.blue { background: var(--pastel-sky); }
+.dot.amber { background: var(--pastel-butter); }
+.dot.rose { background: var(--pastel-rose); }
 .dot.gray { background: var(--bevel-shadow); }
 
-/* Retro Simulation Control Panel */
+/* Simulation Controls */
 .sim-controls-card {
   background: var(--chassis-bg);
   border-top: 2px solid var(--bevel-light);
@@ -1453,20 +1562,22 @@ td.heat-mem-high {
 }
 
 .btn-sim-danger {
-  color: var(--retro-red);
+  color: var(--pastel-rose-dark);
+  background: var(--pastel-rose-bg);
 }
 
 .btn-sim-primary {
-  color: var(--retro-navy);
+  color: var(--pastel-mint-dark);
+  background: var(--pastel-mint-bg);
 }
 
-/* Vintage Security Seal Guarantee Card */
+/* Pastel Air-Gapped Security Card */
 .promo-card {
-  background: var(--inset-bg-subtle);
-  border-top: 2px solid var(--bevel-shadow);
-  border-left: 2px solid var(--bevel-shadow);
-  border-right: 2px solid var(--bevel-light);
-  border-bottom: 2px solid var(--bevel-light);
+  background: var(--pastel-mint-bg);
+  border-top: 2px solid var(--bevel-light);
+  border-left: 2px solid var(--bevel-light);
+  border-right: 2px solid var(--pastel-mint-border);
+  border-bottom: 2px solid var(--pastel-mint-border);
   padding: 14px;
   text-align: center;
   margin-top: auto;
@@ -1479,7 +1590,7 @@ td.heat-mem-high {
 .promo-title {
   font-size: 0.8rem;
   font-weight: 900;
-  color: var(--text-main);
+  color: var(--pastel-mint-dark);
   margin: 4px 0 2px 0;
   text-transform: uppercase;
 }
@@ -1493,12 +1604,12 @@ td.heat-mem-high {
 
 .btn-promo {
   width: 100%;
-  background: var(--chassis-bg);
-  border-top: 2px solid var(--bevel-light);
-  border-left: 2px solid var(--bevel-light);
-  border-right: 2px solid var(--bevel-dark);
-  border-bottom: 2px solid var(--bevel-dark);
-  color: var(--text-main);
+  background: var(--pastel-mint-bg);
+  border-top: 2px solid #ffffff;
+  border-left: 2px solid #ffffff;
+  border-right: 2px solid var(--pastel-mint-dark);
+  border-bottom: 2px solid var(--pastel-mint-dark);
+  color: var(--pastel-mint-dark);
   padding: 6px 10px;
   font-size: 0.72rem;
   font-weight: 800;
@@ -1508,10 +1619,10 @@ td.heat-mem-high {
 }
 
 .btn-promo:active {
-  border-top: 2px solid var(--bevel-dark);
-  border-left: 2px solid var(--bevel-dark);
-  border-right: 2px solid var(--bevel-light);
-  border-bottom: 2px solid var(--bevel-light);
+  border-top: 2px solid var(--pastel-mint-dark);
+  border-left: 2px solid var(--pastel-mint-dark);
+  border-right: 2px solid #ffffff;
+  border-bottom: 2px solid #ffffff;
   transform: translate(1px, 1px);
 }
 
@@ -1629,32 +1740,32 @@ td.heat-mem-high {
 .p-track {
   flex: 1;
   height: 8px;
-  background: #111;
+  background: #e2ddd3;
   border: 1px solid var(--bevel-shadow);
   overflow: hidden;
 }
 
 .p-fill.lime {
   height: 100%;
-  background: repeating-linear-gradient(90deg, #00ff66 0, #00ff66 6px, #111 6px, #111 8px);
+  background: repeating-linear-gradient(90deg, var(--pastel-mint) 0, var(--pastel-mint) 6px, #e2ddd3 6px, #e2ddd3 8px);
 }
 
 .p-fill.coral {
   height: 100%;
-  background: repeating-linear-gradient(90deg, #ffaa00 0, #ffaa00 6px, #111 6px, #111 8px);
+  background: repeating-linear-gradient(90deg, var(--pastel-coral) 0, var(--pastel-coral) 6px, #e2ddd3 6px, #e2ddd3 8px);
 }
 
 .mem-seg-bar {
   height: 12px;
-  background: #111;
+  background: #e2ddd3;
   border: 1px solid var(--bevel-shadow);
   display: flex;
   margin-bottom: 8px;
 }
 
-.m-seg.app { background: var(--retro-blue); }
-.m-seg.cache { background: var(--retro-amber); }
-.m-seg.free { background: #333; }
+.m-seg.app { background: var(--pastel-sky); }
+.m-seg.cache { background: var(--pastel-butter); }
+.m-seg.free { background: var(--bevel-shadow); }
 
 .mem-legend {
   display: flex;
@@ -1720,14 +1831,14 @@ td.heat-mem-high {
 
 .baseline-bar-container {
   height: 7px;
-  background: #111;
+  background: #e2ddd3;
   border: 1px solid var(--bevel-shadow);
   overflow: hidden;
 }
 
 .baseline-bar {
   height: 100%;
-  background: var(--retro-green);
+  background: var(--pastel-mint);
 }
 
 /* Alerts View */
@@ -1741,7 +1852,7 @@ td.heat-mem-high {
 .alert-item {
   background: var(--chassis-bg);
   border-top: 2px solid var(--bevel-light);
-  border-left: 4px solid var(--retro-red);
+  border-left: 4px solid var(--pastel-rose);
   border-right: 2px solid var(--bevel-dark);
   border-bottom: 2px solid var(--bevel-dark);
   padding: 12px;
@@ -1777,8 +1888,9 @@ td.heat-mem-high {
 .alert-mitre {
   font-size: 0.65rem;
   font-weight: 800;
-  background: var(--retro-red);
-  color: #ffffff;
+  background: var(--pastel-rose-bg);
+  color: var(--pastel-rose-dark);
+  border: 1px solid var(--pastel-rose-border);
   padding: 1px 5px;
 }
 
@@ -1868,7 +1980,7 @@ td.heat-mem-high {
 .code-tag {
   font-size: 0.65rem;
   font-weight: 800;
-  color: var(--text-crt-amber);
+  color: var(--pastel-butter);
   display: block;
   margin-bottom: 6px;
 }
@@ -1876,12 +1988,12 @@ td.heat-mem-high {
 .code-snippet code {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.76rem;
-  color: var(--text-crt-green);
+  color: var(--pastel-mint);
   line-height: 1.5;
 }
 
 /* =========================================================
-   14. RETRO MODAL DIALOGS (Authentic 3D Dialog Boxes)
+   14. PASTEL MODAL DIALOGS
    ========================================================= */
 .modal-overlay {
   position: fixed;
@@ -1889,7 +2001,7 @@ td.heat-mem-high {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.45);
   display: none;
   align-items: center;
   justify-content: center;
@@ -1907,7 +2019,7 @@ td.heat-mem-high {
   border-left: 2px solid var(--bevel-light);
   border-right: 2px solid var(--bevel-dark);
   border-bottom: 2px solid var(--bevel-dark);
-  box-shadow: 6px 6px 0px rgba(0, 0, 0, 0.6);
+  box-shadow: 6px 8px 0px rgba(0, 0, 0, 0.35);
   width: 100%;
   max-width: 580px;
   overflow: hidden;
@@ -1952,7 +2064,7 @@ td.heat-mem-high {
 
 .modal-close {
   background: var(--chassis-bg);
-  color: #000;
+  color: var(--text-main);
   border-top: 1px solid var(--bevel-light);
   border-left: 1px solid var(--bevel-light);
   border-right: 1px solid var(--bevel-dark);
@@ -2014,10 +2126,11 @@ td.heat-mem-high {
 }
 
 .btn-modal-danger {
-  color: var(--retro-red);
+  color: var(--pastel-rose-dark);
+  background: var(--pastel-rose-bg);
 }
 
-/* Simulation Scenario List inside Modal */
+/* Simulation Scenarios in Modal */
 .sim-scenario-list {
   display: flex;
   flex-direction: column;
@@ -2066,19 +2179,20 @@ td.heat-mem-high {
   font-size: 0.64rem;
   font-weight: 800;
   padding: 1px 5px;
-  border: 1px solid var(--bevel-dark);
+  border: 1px solid;
 }
 
-.scen-tag.red { background: var(--retro-red); color: #fff; }
-.scen-tag.orange { background: var(--retro-amber); color: #000; }
-.scen-tag.purple { background: var(--retro-navy); color: #fff; }
+.scen-tag.red { background: var(--pastel-rose-bg); color: var(--pastel-rose-dark); border-color: var(--pastel-rose-border); }
+.scen-tag.orange { background: var(--pastel-coral-bg); color: var(--pastel-coral-dark); border-color: var(--pastel-coral-border); }
+.scen-tag.purple { background: var(--pastel-lilac-bg); color: var(--pastel-lilac-dark); border-color: var(--pastel-lilac-border); }
 
 .btn-inject {
-  background: var(--chassis-bg);
-  border-top: 1px solid var(--bevel-light);
-  border-left: 1px solid var(--bevel-light);
-  border-right: 1px solid var(--bevel-dark);
-  border-bottom: 1px solid var(--bevel-dark);
+  background: var(--pastel-mint-bg);
+  color: var(--pastel-mint-dark);
+  border-top: 1px solid #ffffff;
+  border-left: 1px solid #ffffff;
+  border-right: 1px solid var(--pastel-mint-dark);
+  border-bottom: 1px solid var(--pastel-mint-dark);
   padding: 4px 10px;
   font-size: 0.7rem;
   font-weight: 800;
@@ -2088,10 +2202,10 @@ td.heat-mem-high {
 }
 
 .btn-inject:active {
-  border-top: 1px solid var(--bevel-dark);
-  border-left: 1px solid var(--bevel-dark);
-  border-right: 1px solid var(--bevel-light);
-  border-bottom: 1px solid var(--bevel-light);
+  border-top: 1px solid var(--pastel-mint-dark);
+  border-left: 1px solid var(--pastel-mint-dark);
+  border-right: 1px solid #ffffff;
+  border-bottom: 1px solid #ffffff;
 }
 
 /* Privacy Modal Checklist */
@@ -2116,8 +2230,9 @@ td.heat-mem-high {
 .priv-icon {
   width: 18px;
   height: 18px;
-  background: var(--retro-green);
-  color: #ffffff;
+  background: var(--pastel-mint);
+  color: var(--pastel-mint-dark);
+  border: 1px solid var(--pastel-mint-border);
   display: flex;
   align-items: center;
   justify-content: center;
