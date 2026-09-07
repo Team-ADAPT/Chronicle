@@ -235,7 +235,7 @@
 
     const themeLabel = document.getElementById('themeLabel');
     if (themeLabel) {
-      themeLabel.textContent = theme === 'light' ? 'Light' : 'Dark';
+      themeLabel.textContent = theme === 'light' ? 'Classic' : 'Cyber CRT';
     }
   }
 
@@ -979,6 +979,11 @@
         const mins = String(Math.floor((diffSec % 3600) / 60)).padStart(2, '0');
         const secs = String(diffSec % 60).padStart(2, '0');
         uptimeEl.textContent = `Up: ${hrs}:${mins}:${secs}`;
+      }
+      const statusClock = document.getElementById('statusbarClock');
+      if (statusClock) {
+        const d = new Date();
+        statusClock.textContent = d.toTimeString().split(' ')[0] + ' UTC';
       }
     }, 1000);
   }
