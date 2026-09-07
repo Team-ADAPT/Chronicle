@@ -16,6 +16,23 @@
   <div class="dashboard-canvas">
     <div class="dashboard-window">
       
+      <!-- Retro Window Titlebar -->
+      <div class="retro-titlebar">
+        <div class="retro-titlebar-left">
+          <span class="retro-titlebar-icon">📟</span>
+          <span class="retro-titlebar-text">CHRONICLE // HOST_BEHAVIOUR_ANALYSIS_MONITOR_v0.2.0</span>
+        </div>
+        <div class="retro-titlebar-center">
+          <span class="retro-titlebar-chip">KERNEL: 6.8.0-GENERIC</span>
+          <span class="retro-titlebar-chip">0B OUTBOUND // AIR-GAPPED</span>
+        </div>
+        <div class="retro-titlebar-controls">
+          <button class="retro-win-btn" title="Minimize">_</button>
+          <button class="retro-win-btn" title="Maximize">□</button>
+          <button class="retro-win-btn close" title="Close">✕</button>
+        </div>
+      </div>
+      
       <!-- 1. LEFT NAVIGATION SIDEBAR (Windows Task Manager & Activity Monitor Style) -->
       <aside class="sidebar">
         <!-- Brand Header -->
@@ -676,6 +693,23 @@ sudo dpkg -i chronicle_0.2.0-1_amd64.deb</code></pre>
           <button id="btnAuditPrivacy" class="btn-promo">Audit Privacy Controls</button>
         </div>
       </aside>
+
+      <!-- Retro Window Status Bar -->
+      <div class="retro-statusbar">
+        <div class="retro-status-pane">
+          <span class="retro-led-dot green"></span>
+          <span>eBPF: ACTIVE [6.8.0]</span>
+        </div>
+        <div class="retro-status-pane">
+          <span>RING BUFFER: 0 DROPS</span>
+        </div>
+        <div class="retro-status-pane">
+          <span>ML ENGINE: ISOLATION FOREST (100% LOCAL)</span>
+        </div>
+        <div class="retro-status-pane clock" id="statusbarClock">
+          00:00:00 UTC
+        </div>
+      </div>
 
     </div>
   </div>
