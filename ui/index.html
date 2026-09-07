@@ -1,832 +1,158 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chronicle — Intelligent Host Behaviour & Activity Monitor</title>
-  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <title>Chronicle — Host Behaviour Analysis System</title>
+  <!-- Google Fonts: Press Start 2P for retro, Inter for modern -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <link rel="icon" type="image/png" href="assets/icon.png">
 </head>
 <body>
-  <!-- Outer Dashboard Canvas -->
-  <div class="dashboard-canvas">
-    <div class="dashboard-window">
-      
-      <!-- 1. LEFT NAVIGATION SIDEBAR (Windows Task Manager & Activity Monitor Style) -->
-      <aside class="sidebar">
-        <!-- Brand Header -->
-        <div class="sidebar-brand">
-          <img src="assets/icon.png" alt="Chronicle Logo" class="brand-logo">
-          <div class="brand-info">
-            <h1 class="brand-name">Chronicle</h1>
-            <span class="brand-badge">Host Security AI</span>
+  <div class="app-container">
+    <!-- Top System Header Bar -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="app-logo">
+          <img src="assets/icon.png" alt="Chronicle Logo" class="logo-icon">
+          <div class="logo-text">
+            <div class="brand-title">CHRONICLE <span class="badge-version">v0.2.0-deb</span></div>
+            <div class="brand-subtitle">Host Behaviour Analysis & Activity Monitor</div>
           </div>
         </div>
+      </div>
 
-        <!-- Quick Action Primary Button (Reference Screenshot Emerald CTA) -->
-        <div class="sidebar-action">
-          <button id="btnNewEvent" class="btn-create" title="Simulate Host Activity or Anomaly (Windows Run Task style)">
-            <span class="btn-plus">+</span>
-            <span>Simulate Event</span>
-          </button>
+      <div class="header-center">
+        <div class="system-status-pill">
+          <span class="status-dot pulsing"></span>
+          <span class="status-label">eBPF Telemetry: <strong>MONITORING</strong></span>
         </div>
-
-        <!-- Sidebar Navigation Menu -->
-        <nav class="sidebar-menu">
-          <div class="menu-group-title">MONITORING</div>
-          <button class="menu-item active" data-tab="liveActivityView">
-            <span class="menu-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-            </span>
-            <span class="menu-label">Processes & Activity</span>
-          </button>
-          
-          <button class="menu-item" data-tab="performanceView">
-            <span class="menu-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-            </span>
-            <span class="menu-label">Performance & Charts</span>
-          </button>
-
-          <button class="menu-item" data-tab="profilesView">
-            <span class="menu-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-            </span>
-            <span class="menu-label">Historical Baselines</span>
-          </button>
-
-          <button class="menu-item" data-tab="alertsView">
-            <span class="menu-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            </span>
-            <span class="menu-label">Security Alerts</span>
-            <span class="menu-badge" id="menuAlertBadge">3</span>
-          </button>
-
-          <button class="menu-item" data-tab="packagingView">
-            <span class="menu-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-            </span>
-            <span class="menu-label">Debian (.deb) App</span>
-          </button>
-
-          <div class="menu-group-title" style="margin-top: 20px;">SYSTEM & PRIVACY</div>
-          <button class="menu-item" id="btnPrivacyModal">
-            <span class="menu-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            </span>
-            <span class="menu-label">Local Isolation Audit</span>
-          </button>
-        </nav>
-
-        <!-- Host System Health Badge Footer -->
-        <div class="sidebar-footer">
-          <div class="host-pill">
-            <span class="host-dot"></span>
-            <div class="host-details">
-              <span class="host-os">Linux 6.8.0-generic</span>
-              <span class="host-mode">0B Outbound • 100% Local</span>
-            </div>
-          </div>
+        <div class="system-tag">
+          <span class="tag-icon">🐧</span>
+          <span>Linux 6.8.0-generic (x86_64)</span>
         </div>
-      </aside>
-
-      <!-- 2. CENTER MAIN CONTENT AREA -->
-      <main class="main-content">
-        <!-- Top Toolbar with Search, Actions & Theme Toggle -->
-        <header class="top-bar">
-          <div class="search-box">
-            <span class="search-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            </span>
-            <input type="text" id="eventSearchInput" placeholder="Filter processes, PID, user, or syscall... (⌘K)">
-            <span class="search-kbd">⌘K</span>
-          </div>
-
-          <!-- Activity Manager / Task Manager Top Action Controls -->
-          <div class="top-action-bar">
-            <!-- Apple Activity Monitor Inspect Button -->
-            <button id="btnInspectSelected" class="btn-tool" title="Inspect selected process (⌘I)">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-              <span>Inspect</span>
-            </button>
-
-            <!-- Windows Task Manager End Task Button -->
-            <button id="btnEndTask" class="btn-tool danger" title="End / Terminate selected process">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-              <span>End Task</span>
-            </button>
-
-            <!-- Live Stream Toggle -->
-            <button id="btnToggleLiveFeed" class="btn-tool live-active" title="Toggle real-time streaming">
-              <span class="pulse-indicator"></span>
-              <span id="liveFeedText">Live Stream</span>
-            </button>
-
-            <!-- THEME SWITCHER (Light Mode / Dark Mode from Reference Screenshot 2) -->
-            <button id="themeToggleBtn" class="btn-theme-toggle" title="Switch Theme (Light / Dark)">
-              <span class="theme-icon sun-icon">☀️</span>
-              <span class="theme-icon moon-icon">🌙</span>
-              <span class="theme-label" id="themeLabel">Light</span>
-            </button>
-
-            <div class="top-meta-badge">
-              <span class="uptime-dot"></span>
-              <span id="systemUptime">Up: 02:45:12</span>
-            </div>
-          </div>
-        </header>
-
-        <!-- Segmented Tab Header (Apple Activity Monitor Style: CPU, Memory, Network, Anomaly) -->
-        <div class="activity-segmented-bar">
-          <button class="seg-tab active" data-seg="all">
-            <span class="seg-icon">⚡</span> All Telemetry (<span id="totalEventsBadge">1,460</span>)
-          </button>
-          <button class="seg-tab" data-seg="cpu">
-            <span class="seg-icon">📈</span> CPU & Threads
-          </button>
-          <button class="seg-tab" data-seg="memory">
-            <span class="seg-icon">💾</span> Memory Footprint
-          </button>
-          <button class="seg-tab" data-seg="network">
-            <span class="seg-icon">🌐</span> Network Sockets
-          </button>
-          <button class="seg-tab text-danger" data-seg="anomalies">
-            <span class="seg-icon">🚨</span> High-Risk Anomalies (<span id="anomalySegBadge">3</span>)
-          </button>
+        <div class="system-tag privacy-tag">
+          <span class="tag-icon">🔒</span>
+          <span>Local Storage Only (0B Outbound)</span>
         </div>
+      </div>
 
-        <!-- =========================================================
-             VIEW 1: PROCESSES & ACTIVITY STREAM (Main View)
-             ========================================================= -->
-        <div class="content-view active" id="liveActivityView">
-          
-          <!-- 4 Pastel Metric Cards (Inspired by Reference Screenshot Top Row) -->
-          <div class="kpi-pastel-grid">
-            
-            <!-- Card 1: Lime/Mint Pastel Card (CPU & Active Processes) -->
-            <div class="kpi-card pastel-lime">
-              <div class="kpi-card-top">
-                <div class="kpi-badge lime">CPU Utilization</div>
-                <div class="kpi-icon-wrap lime">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
-                </div>
-              </div>
-              <div class="kpi-card-middle">
-                <div class="kpi-value font-mono" id="cpuUtilization">12.4%</div>
-                <div class="kpi-subtext">42 Active Processes • 186 Threads</div>
-              </div>
-              <!-- Mini live sparkline preview -->
-              <div class="kpi-sparkline">
-                <svg viewBox="0 0 120 28" class="spark-svg">
-                  <path d="M0 22 Q 20 18, 40 24 T 80 12 T 120 16" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round"/>
-                </svg>
-              </div>
-            </div>
+      <div class="header-right">
+        <div class="clock-display" id="systemClock">00:00:00 UTC</div>
+        <button id="themeToggleBtn" class="icon-btn" title="Toggle Display Mode">⚙️</button>
+      </div>
+    </header>
 
-            <!-- Card 2: Peach/Coral Pastel Card (Memory Pressure) -->
-            <div class="kpi-card pastel-coral">
-              <div class="kpi-card-top">
-                <div class="kpi-badge coral">Memory Pressure</div>
-                <div class="kpi-icon-wrap coral">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
-                </div>
-              </div>
-              <div class="kpi-card-middle">
-                <div class="kpi-value font-mono" id="memoryUsage">3.2 GB <span class="kpi-denom">/ 16 GB</span></div>
-                <div class="kpi-subtext">Buffer & Cache: 1.1 GB • Swap: 0%</div>
-              </div>
-              <div class="kpi-progress-track">
-                <div class="kpi-progress-bar coral" style="width: 20%;"></div>
-              </div>
-            </div>
+    <!-- Top KPI Metric Cards -->
+    <section class="kpi-grid">
+      <div class="kpi-card">
+        <h3 class="kpi-title">Active Processes</h3>
+        <p class="kpi-value" id="activeProcesses">0</p>
+      </div>
+      <div class="kpi-card">
+        <h3 class="kpi-title">Events/Hour</h3>
+        <p class="kpi-value" id="eventsPerHour">0</p>
+      </div>
+      <div class="kpi-card">
+        <h3 class="kpi-title">Alerts</h3>
+        <p class="kpi-value" id="alertCount">0</p>
+      </div>
+      <div class="kpi-card">
+        <h3 class="kpi-title">System Uptime</h3>
+        <p class="kpi-value" id="systemUptime">00:00:00</p>
+      </div>
+    </section>
 
-            <!-- Card 3: Sky/Cyan Pastel Card (Syscall Telemetry Rate) -->
-            <div class="kpi-card pastel-cyan">
-              <div class="kpi-card-top">
-                <div class="kpi-badge cyan">Syscall Frequency</div>
-                <div class="kpi-icon-wrap cyan">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-                </div>
-              </div>
-              <div class="kpi-card-middle">
-                <div class="kpi-value font-mono" id="syscallRate">2,840 <span class="kpi-denom">calls/s</span></div>
-                <div class="kpi-subtext">eBPF Probe Buffer: Healthy (0 drops)</div>
-              </div>
-              <div class="kpi-sparkline">
-                <svg viewBox="0 0 120 28" class="spark-svg">
-                  <path d="M0 20 Q 30 10, 60 18 T 100 8 T 120 12" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-linecap="round"/>
-                </svg>
-              </div>
-            </div>
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="tab-container">
+        <button class="tab-btn active" data-tab="eventsTab">Events</button>
+        <button class="tab-btn" data-tab="statsTab">Statistics</button>
+        <button class="tab-btn" data-tab="alertsTab">Alerts</button>
+      </div>
 
-            <!-- Card 4: Purple/Gradient Card (Host Normalcy & Anomaly Score) -->
-            <div class="kpi-card pastel-purple featured">
-              <div class="kpi-card-top">
-                <div class="kpi-badge purple">Historical Normalcy</div>
-                <div class="kpi-icon-wrap purple">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                </div>
-              </div>
-              <div class="kpi-card-middle">
-                <div class="kpi-value font-mono text-purple" id="hostNormalcyVal">94.2%</div>
-                <div class="kpi-subtext" id="anomalyStatusText">3 Anomalies Flagged (&gt;3&sigma;)</div>
-              </div>
-              <div class="kpi-status-tag">
-                <span class="status-shield">🛡️</span> In-Process Isolation Forest
-              </div>
-            </div>
-
-          </div>
-
-          <!-- Process Clusters (Like Folders in Reference Screenshot) -->
-          <div class="section-title-row">
-            <div class="section-heading-group">
-              <h3 class="section-title">Process Clusters</h3>
-              <span class="section-subtext">Filter active telemetry stream by process group</span>
-            </div>
-            <span class="section-link" id="btnViewProfilesLink">View 30-Day Baselines &rarr;</span>
-          </div>
-
-          <div class="clusters-grid">
-            <div class="cluster-card" data-filter="systemd">
-              <div class="cluster-header">
-                <div class="cluster-icon emerald">🐧</div>
-                <span class="cluster-badge">18 Procs</span>
-              </div>
-              <div class="cluster-name">System Daemons</div>
-              <div class="cluster-meta">systemd, cron, udevd, journald</div>
-            </div>
-
-            <div class="cluster-card" data-filter="nginx">
-              <div class="cluster-header">
-                <div class="cluster-icon blue">🌐</div>
-                <span class="cluster-badge">8 Procs</span>
-              </div>
-              <div class="cluster-name">Network & Web</div>
-              <div class="cluster-meta">nginx, sshd, rsyslog, dnsmasq</div>
-            </div>
-
-            <div class="cluster-card" data-filter="bash">
-              <div class="cluster-header">
-                <div class="cluster-icon peach">💻</div>
-                <span class="cluster-badge">12 Procs</span>
-              </div>
-              <div class="cluster-name">User Shells & Apps</div>
-              <div class="cluster-meta">bash, python3, zsh, node</div>
-            </div>
-
-            <div class="cluster-card" data-filter="dockerd">
-              <div class="cluster-header">
-                <div class="cluster-icon purple">🐳</div>
-                <span class="cluster-badge">4 Procs</span>
-              </div>
-              <div class="cluster-name">Containers & Workers</div>
-              <div class="cluster-meta">dockerd, containerd, kswapd</div>
-            </div>
-          </div>
-
-          <!-- Windows Task Manager Heatmap Process Table (Recent Telemetry) -->
-          <div class="section-title-row" style="margin-top: 24px;">
-            <div class="section-heading-group">
-              <h3 class="section-title">Process Activity Stream</h3>
-              <span class="section-subtext">Live kernel events with Task Manager heatmap resource intensity</span>
-            </div>
-            <div class="table-action-group">
-              <span class="table-hint">💡 Click any row to select & inspect</span>
-              <button id="btnClearFilter" class="btn-mini">Clear Filters</button>
-            </div>
-          </div>
-
-          <div class="table-card">
-            <table class="recent-table" id="processTable">
+      <div class="tab-content">
+        <!-- Events Tab -->
+        <section id="eventsTab" class="tab-pane active">
+          <div class="table-container">
+            <table class="events-table">
               <thead>
                 <tr>
-                  <th style="width: 220px;">Process Name (`comm`)</th>
-                  <th style="width: 100px;">PID</th>
-                  <th style="width: 100px;">User</th>
-                  <th style="width: 130px;">Action / Syscall</th>
-                  <th style="width: 110px;">CPU %</th>
-                  <th style="width: 110px;">Memory</th>
-                  <th style="width: 110px;">Syscalls/s</th>
-                  <th style="width: 130px;">Anomaly Risk</th>
-                  <th style="width: 80px; text-align: right;">Action</th>
+                  <th>Time</th>
+                  <th>Process</th>
+                  <th>PID</th>
+                  <th>PPID</th>
+                  <th>Event</th>
+                  <th>CPU %</th>
+                  <th>Memory MB</th>
                 </tr>
               </thead>
               <tbody id="eventsTableBody">
-                <!-- Injected via JavaScript with Heatmap Classes -->
+                <!-- Rows will be inserted here by JavaScript -->
               </tbody>
             </table>
           </div>
+        </section>
 
-          <!-- =========================================================
-               BOTTOM ANALYTICS CHARTS SECTION
-               (Directly mirroring bottom of Reference Screenshot 2!)
-               ========================================================= -->
-          <div class="charts-section-grid">
-            
-            <!-- Chart 1: Bar Chart (Hourly Event Volume Bursts) -->
-            <div class="chart-card">
-              <div class="chart-header">
-                <div>
-                  <h4 class="chart-title">Event Volume Bursts</h4>
-                  <span class="chart-subtitle">Syscalls & execution count over 24h</span>
-                </div>
-                <div class="chart-stat-pill font-mono">6,431 total</div>
-              </div>
-              <div class="chart-canvas-wrap">
-                <!-- SVG Bar Chart -->
-                <svg class="analytics-svg" viewBox="0 0 300 130">
-                  <defs>
-                    <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stop-color="#8b5cf6"/>
-                      <stop offset="100%" stop-color="#6366f1"/>
-                    </linearGradient>
-                    <linearGradient id="barGradActive" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stop-color="#ec4899"/>
-                      <stop offset="100%" stop-color="#8b5cf6"/>
-                    </linearGradient>
-                  </defs>
-                  <!-- Baseline grid lines -->
-                  <line x1="10" y1="20" x2="290" y2="20" stroke="var(--border-subtle)" stroke-dasharray="3"/>
-                  <line x1="10" y1="60" x2="290" y2="60" stroke="var(--border-subtle)" stroke-dasharray="3"/>
-                  <line x1="10" y1="100" x2="290" y2="100" stroke="var(--border-subtle)"/>
-                  
-                  <!-- Volume Bars -->
-                  <rect x="20" y="70" width="10" height="30" rx="3" fill="url(#barGrad)" opacity="0.8"/>
-                  <rect x="36" y="55" width="10" height="45" rx="3" fill="url(#barGrad)" opacity="0.8"/>
-                  <rect x="52" y="40" width="10" height="60" rx="3" fill="url(#barGrad)" opacity="0.8"/>
-                  <rect x="68" y="75" width="10" height="25" rx="3" fill="url(#barGrad)" opacity="0.8"/>
-                  <rect x="84" y="30" width="10" height="70" rx="3" fill="url(#barGrad)" opacity="0.8"/>
-                  <rect x="100" y="48" width="10" height="52" rx="3" fill="url(#barGrad)" opacity="0.8"/>
-                  <rect x="116" y="65" width="10" height="35" rx="3" fill="url(#barGrad)" opacity="0.8"/>
-                  <rect x="132" y="25" width="10" height="75" rx="3" fill="url(#barGradActive)"/>
-                  <rect x="148" y="50" width="10" height="50" rx="3" fill="url(#barGrad)" opacity="0.8"/>
-                  <rect x="164" y="60" width="10" height="40" rx="3" fill="url(#barGrad)" opacity="0.8"/>
-                  <rect x="180" y="35" width="10" height="65" rx="3" fill="url(#barGrad)" opacity="0.8"/>
-                  <rect x="196" y="80" width="10" height="20" rx="3" fill="url(#barGrad)" opacity="0.8"/>
-                  <rect x="212" y="42" width="10" height="58" rx="3" fill="url(#barGrad)" opacity="0.8"/>
-                  <rect x="228" y="32" width="10" height="68" rx="3" fill="url(#barGrad)" opacity="0.8"/>
-                  <rect x="244" y="58" width="10" height="42" rx="3" fill="url(#barGrad)" opacity="0.8"/>
-                  <rect x="260" y="20" width="10" height="80" rx="3" fill="url(#barGradActive)"/>
-                  
-                  <!-- X Axis Labels -->
-                  <text x="25" y="118" class="chart-axis-text">00:00</text>
-                  <text x="105" y="118" class="chart-axis-text">08:00</text>
-                  <text x="185" y="118" class="chart-axis-text">16:00</text>
-                  <text x="260" y="118" class="chart-axis-text">Now</text>
-                </svg>
-              </div>
+        <!-- Stats Tab -->
+        <section id="statsTab" class="tab-pane">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <h4>Total Events</h4>
+              <p id="totalEvents">0</p>
             </div>
-
-            <!-- Chart 2: Smooth Area Line Chart (Host Load & Anomaly Score Trend) -->
-            <div class="chart-card">
-              <div class="chart-header">
-                <div>
-                  <h4 class="chart-title">Anomaly Risk History</h4>
-                  <span class="chart-subtitle">Z-Score Gaussian deviation curve</span>
-                </div>
-                <div class="chart-stat-pill font-mono text-cyan" id="avgRiskTrend">0.82 &mu;</div>
-              </div>
-              <div class="chart-canvas-wrap">
-                <!-- SVG Area Line Chart -->
-                <svg class="analytics-svg" viewBox="0 0 300 130">
-                  <defs>
-                    <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.45"/>
-                      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.02"/>
-                    </linearGradient>
-                  </defs>
-                  <line x1="10" y1="20" x2="290" y2="20" stroke="var(--border-subtle)" stroke-dasharray="3"/>
-                  <line x1="10" y1="60" x2="290" y2="60" stroke="var(--border-subtle)" stroke-dasharray="3"/>
-                  <line x1="10" y1="100" x2="290" y2="100" stroke="var(--border-subtle)"/>
-                  
-                  <!-- Area Fill -->
-                  <path d="M 15 85 Q 50 82, 80 50 T 150 70 T 210 28 T 285 65 L 285 100 L 15 100 Z" fill="url(#areaGrad)"/>
-                  <!-- Smooth Curve Line -->
-                  <path d="M 15 85 Q 50 82, 80 50 T 150 70 T 210 28 T 285 65" fill="none" stroke="#06b6d4" stroke-width="3" stroke-linecap="round"/>
-                  
-                  <!-- Anomaly High-Risk Dot Indicator -->
-                  <circle cx="210" cy="28" r="5" fill="#f43f5e" stroke="#ffffff" stroke-width="2"/>
-                  <text x="180" y="20" class="chart-label-danger">Anomaly +4.8&sigma;</text>
-                  
-                  <!-- X Axis Labels -->
-                  <text x="15" y="118" class="chart-axis-text">-60m</text>
-                  <text x="100" y="118" class="chart-axis-text">-40m</text>
-                  <text x="190" y="118" class="chart-axis-text">-20m</text>
-                  <text x="270" y="118" class="chart-axis-text">Live</text>
-                </svg>
-              </div>
+            <div class="stat-card">
+              <h4>Events Today</h4>
+              <p id="eventsToday">0</p>
             </div>
-
-            <!-- Chart 3: Donut Threat Breakdown Chart -->
-            <div class="chart-card">
-              <div class="chart-header">
-                <div>
-                  <h4 class="chart-title">Threat Breakdown</h4>
-                  <span class="chart-subtitle">Event classification distribution</span>
-                </div>
-                <div class="chart-stat-pill font-mono text-emerald">94% Safe</div>
-              </div>
-              <div class="chart-donut-wrap">
-                <!-- SVG Donut Chart -->
-                <svg class="donut-svg" viewBox="0 0 120 120">
-                  <circle cx="60" cy="60" r="45" fill="none" stroke="var(--border-subtle)" stroke-width="12"/>
-                  <!-- Green: Normal Daemons (62%) -->
-                  <circle cx="60" cy="60" r="45" fill="none" stroke="#00c288" stroke-width="12"
-                          stroke-dasharray="175 282" stroke-dashoffset="0" stroke-linecap="round"/>
-                  <!-- Blue: User Apps (24%) -->
-                  <circle cx="60" cy="60" r="45" fill="none" stroke="#3b82f6" stroke-width="12"
-                          stroke-dasharray="68 282" stroke-dashoffset="-180" stroke-linecap="round"/>
-                  <!-- Amber: Elevated (10%) -->
-                  <circle cx="60" cy="60" r="45" fill="none" stroke="#f59e0b" stroke-width="12"
-                          stroke-dasharray="28 282" stroke-dashoffset="-252" stroke-linecap="round"/>
-                  <!-- Red: Anomalous (4%) -->
-                  <circle cx="60" cy="60" r="45" fill="none" stroke="#f43f5e" stroke-width="12"
-                          stroke-dasharray="11 282" stroke-dashoffset="-282" stroke-linecap="round"/>
-                </svg>
-                <div class="donut-center-legend">
-                  <span class="donut-center-num">42</span>
-                  <span class="donut-center-sub">Processes</span>
-                </div>
-              </div>
-              <div class="donut-mini-legend">
-                <span><span class="dot emerald"></span> System</span>
-                <span><span class="dot blue"></span> User</span>
-                <span><span class="dot amber"></span> Network</span>
-                <span><span class="dot rose"></span> Anomaly</span>
-              </div>
+            <div class="stat-card">
+              <h4>Avg CPU Usage</h4>
+              <p id="avgCpu">0.00%</p>
             </div>
-
-          </div>
-
-        </div>
-
-        <!-- =========================================================
-             VIEW 2: PERFORMANCE & EXTENDED CHARTS (Apple Activity Monitor Tab)
-             ========================================================= -->
-        <div class="content-view" id="performanceView">
-          <div class="section-title">Host Performance Metrics</div>
-          <p class="section-subtext">Real-time CPU, Memory, Disk I/O, and Context Switches monitored directly via kernel interfaces.</p>
-          
-          <div class="perf-grid">
-            <div class="perf-card">
-              <h4>CPU Load Average</h4>
-              <div class="perf-big-val font-mono">0.14, 0.28, 0.35</div>
-              <div class="perf-sub">1, 5, and 15 minute exponential moving averages</div>
-              <div class="perf-bars">
-                <div class="perf-bar-row">
-                  <span>Core 0</span>
-                  <div class="p-track"><div class="p-fill lime" style="width: 18%;"></div></div>
-                  <span>18%</span>
-                </div>
-                <div class="perf-bar-row">
-                  <span>Core 1</span>
-                  <div class="p-track"><div class="p-fill lime" style="width: 8%;"></div></div>
-                  <span>8%</span>
-                </div>
-                <div class="perf-bar-row">
-                  <span>Core 2</span>
-                  <div class="p-track"><div class="p-fill coral" style="width: 45%;"></div></div>
-                  <span>45%</span>
-                </div>
-                <div class="perf-bar-row">
-                  <span>Core 3</span>
-                  <div class="p-track"><div class="p-fill lime" style="width: 12%;"></div></div>
-                  <span>12%</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="perf-card">
-              <h4>Memory Footprint Breakdown</h4>
-              <div class="perf-big-val font-mono">3.24 GB Used</div>
-              <div class="perf-sub">Total Physical: 15.62 GB (Free: 11.28 GB)</div>
-              <div class="mem-segments">
-                <div class="mem-seg-bar">
-                  <div class="m-seg app" style="width: 20%;" title="App Memory: 2.1 GB"></div>
-                  <div class="m-seg cache" style="width: 15%;" title="Cache/Buffer: 1.1 GB"></div>
-                  <div class="m-seg free" style="width: 65%;" title="Free: 11.28 GB"></div>
-                </div>
-                <div class="mem-legend">
-                  <span><span class="dot blue"></span> Apps (2.1 GB)</span>
-                  <span><span class="dot amber"></span> Buffers (1.1 GB)</span>
-                  <span><span class="dot gray"></span> Free (11.28 GB)</span>
-                </div>
-              </div>
+            <div class="stat-card">
+              <h4>Avg Memory Usage</h4>
+              <p id="avgMemory">0 MB</p>
             </div>
           </div>
-        </div>
+        </section>
 
-        <!-- =========================================================
-             VIEW 3: HISTORICAL BEHAVIOUR PROFILES (30-Day Baselines)
-             ========================================================= -->
-        <div class="content-view" id="profilesView">
-          <div class="section-title">Historical Baseline Profiles (30-Day Window)</div>
-          <p class="section-subtext">Chronicle continuously tracks historical mean (&mu;) and variance (&sigma;) for each binary. Live activity is scored via Gaussian Z-Score deviations.</p>
-          <div class="profiles-card-grid" id="profilesGrid">
-            <!-- Rendered by JavaScript -->
+        <!-- Alerts Tab -->
+        <section id="alertsTab" class="tab-pane">
+          <div class="table-container">
+            <table class="alerts-table">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Process</th>
+                  <th>PID</th>
+                  <th>Risk</th>
+                  <th>Type</th>
+                </tr>
+              </thead>
+              <tbody id="alertsTableBody">
+                <!-- Rows will be inserted here by JavaScript -->
+              </tbody>
+            </table>
           </div>
-        </div>
-
-        <!-- =========================================================
-             VIEW 4: SECURITY ANOMALY ALERTS (Mitre ATT&CK Triage)
-             ========================================================= -->
-        <div class="content-view" id="alertsView">
-          <div class="section-title-row">
-            <div>
-              <div class="section-title">Security Anomaly Triage</div>
-              <div class="section-subtext">Deviations flagged by in-process ML models mapped to Mitre ATT&CK tactics.</div>
-            </div>
-            <button id="btnAckAllTop" class="btn-outline">Acknowledge All</button>
-          </div>
-          <div class="alerts-feed-container" id="alertsContainer">
-            <!-- Rendered by JavaScript -->
-          </div>
-        </div>
-
-        <!-- =========================================================
-             VIEW 5: DEBIAN PACKAGING BLUEPRINT
-             ========================================================= -->
-        <div class="content-view" id="packagingView">
-          <div class="section-title">Debian (.deb) Distribution Package</div>
-          <p class="section-subtext">Native Linux desktop installation blueprint for Ubuntu & Debian systems.</p>
-          
-          <div class="packaging-card">
-            <div class="packaging-grid">
-              <div class="pkg-item">
-                <span class="pkg-lbl">Package Name:</span>
-                <span class="pkg-val font-mono">chronicle_0.2.0-1_amd64.deb</span>
-              </div>
-              <div class="pkg-item">
-                <span class="pkg-lbl">Installation Target:</span>
-                <span class="pkg-val font-mono">/opt/chronicle</span>
-              </div>
-              <div class="pkg-item">
-                <span class="pkg-lbl">Desktop Entry:</span>
-                <span class="pkg-val font-mono">/usr/share/applications/chronicle.desktop</span>
-              </div>
-              <div class="pkg-item">
-                <span class="pkg-lbl">Security Model:</span>
-                <span class="pkg-val text-emerald">Compiled Standalone ELF (Local Black-Box)</span>
-              </div>
-            </div>
-
-            <div class="code-box">
-              <span class="code-tag">TERMINAL BUILD INSTRUCTIONS</span>
-              <pre class="code-snippet"><code>chmod +x packaging/build_deb.sh
-./packaging/build_deb.sh
-sudo dpkg -i chronicle_0.2.0-1_amd64.deb</code></pre>
-            </div>
-          </div>
-        </div>
-
-      </main>
-
-      <!-- 3. RIGHT ANALYTICS & THREAT SIDEBAR -->
-      <aside class="analytics-sidebar">
-        <!-- User / Node Header Card -->
-        <div class="user-card">
-          <div class="user-avatar-wrap">
-            <img src="assets/icon.png" alt="Node Avatar" class="user-avatar">
-            <span class="online-indicator"></span>
-          </div>
-          <div class="user-meta">
-            <div class="user-name">Linux Host Node-01</div>
-            <div class="user-role">eBPF Telemetry Online</div>
-          </div>
-        </div>
-
-        <!-- Circular Multi-Color Half-Gauge (Host Threat Index) -->
-        <div class="gauge-card">
-          <div class="gauge-title">Host Health & Threat Index</div>
-          <div class="gauge-visual-wrap">
-            <svg class="half-donut" viewBox="0 0 200 110">
-              <!-- Background track -->
-              <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="var(--border-subtle)" stroke-width="16" stroke-linecap="round"/>
-              <!-- Green segment (Normal Daemons) -->
-              <path d="M 20 100 A 80 80 0 0 1 100 20" fill="none" stroke="#00c288" stroke-width="16" stroke-dasharray="125" stroke-dashoffset="0"/>
-              <!-- Blue segment (User tasks) -->
-              <path d="M 100 20 A 80 80 0 0 1 145 35" fill="none" stroke="#3b82f6" stroke-width="16"/>
-              <!-- Yellow segment (Elevated syscalls) -->
-              <path d="M 145 35 A 80 80 0 0 1 168 65" fill="none" stroke="#f59e0b" stroke-width="16"/>
-              <!-- Coral segment (Active Deviations) -->
-              <path d="M 168 65 A 80 80 0 0 1 180 100" fill="none" stroke="#f43f5e" stroke-width="16" stroke-linecap="round"/>
-            </svg>
-            <div class="gauge-center-stat">
-              <span class="gauge-number font-mono" id="gaugeHealthScore">94%</span>
-              <span class="gauge-unit">Host Normalcy</span>
-            </div>
-          </div>
-
-          <!-- Breakdown legend items -->
-          <div class="breakdown-list">
-            <div class="breakdown-item">
-              <span class="dot emerald"></span>
-              <span class="breakdown-label">System Daemons</span>
-              <span class="breakdown-val font-mono" id="legendSystemPct">62%</span>
-            </div>
-            <div class="breakdown-item">
-              <span class="dot blue"></span>
-              <span class="breakdown-label">User Applications</span>
-              <span class="breakdown-val font-mono" id="legendUserPct">24%</span>
-            </div>
-            <div class="breakdown-item">
-              <span class="dot amber"></span>
-              <span class="breakdown-label">Elevated Syscalls</span>
-              <span class="breakdown-val font-mono" id="legendElevatedPct">10%</span>
-            </div>
-            <div class="breakdown-item">
-              <span class="dot rose"></span>
-              <span class="breakdown-label">Anomalies Detected</span>
-              <span class="breakdown-val font-mono text-rose" id="legendAnomalyPct">4%</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Testing & Simulation Control Panel (Windows Task Manager "Run" style) -->
-        <div class="sim-controls-card">
-          <div class="sim-card-header">
-            <span>QUICK SIMULATION</span>
-          </div>
-          <div class="sim-btn-group">
-            <button id="btnRandomEventSide" class="btn-sim-secondary">
-              <span>⚡ Random Event</span>
-            </button>
-            <button id="btnInjectAnomalySide" class="btn-sim-danger">
-              <span>🚨 Inject Anomaly</span>
-            </button>
-            <button id="btnToggleStreamSide" class="btn-sim-primary">
-              <span id="streamSideIcon">▶</span> <span id="streamSideText">Live Stream</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Local-First Privacy Guarantee Card (Like Promo Card in screenshot) -->
-        <div class="promo-card">
-          <div class="promo-icon-wrap">
-            <div class="shield-circle">🛡️</div>
-          </div>
-          <h4 class="promo-title">Local-First Security</h4>
-          <p class="promo-desc">All telemetry, baselines, and ML anomaly inference run 100% locally. Zero telemetry leaves your system.</p>
-          <button id="btnAuditPrivacy" class="btn-promo">Audit Privacy Controls</button>
-        </div>
-      </aside>
-
-    </div>
-  </div>
-
-  <!-- =========================================================
-       MODALS
-       ========================================================= -->
-
-  <!-- 1. Apple Activity Monitor Style Process Inspector Modal -->
-  <div class="modal-overlay" id="processModal">
-    <div class="modal-card">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <div class="modal-process-icon" id="modalProcessIcon">💻</div>
-          <div>
-            <h2 id="modalProcessName">python3 (PID 4192)</h2>
-            <div class="modal-process-sub" id="modalProcessSub">Parent: cron (PID 982) • User: anurag</div>
-          </div>
-        </div>
-        <div class="modal-header-actions">
-          <span class="badge" id="modalRiskBadge">Risk: 88/100</span>
-          <button class="modal-close" id="closeModalBtn">&times;</button>
-        </div>
+        </section>
       </div>
-      <div class="modal-body" id="modalBody">
-        <!-- Injected via JavaScript -->
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="footer-left">
+        <span>Chronicle &copy; 2026 - Local-First Behaviour Analysis</span>
       </div>
-      <div class="modal-footer">
-        <button class="btn-modal-secondary" id="btnModalClose">Close</button>
-        <button class="btn-modal-danger" id="btnModalKill">Terminate Process (SIGKILL)</button>
+      <div class="footer-center">
+        <span>Data remains on your machine • No external transmission</span>
       </div>
-    </div>
-  </div>
-
-  <!-- 2. Simulation Attack Scenario Picker Modal -->
-  <div class="modal-overlay" id="simulationModal">
-    <div class="modal-card">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <span class="modal-icon">🚨</span>
-          <div>
-            <h2>Simulate Anomaly Scenario</h2>
-            <p class="modal-subtitle">Inject real-world security scenarios to test in-process ML anomaly detection</p>
-          </div>
-        </div>
-        <button class="modal-close" id="closeSimModalBtn">&times;</button>
+      <div class="footer-right">
+        <span>Built with eBPF, PostgreSQL, Python</span>
       </div>
-      <div class="modal-body">
-        <div class="sim-scenario-list">
-          
-          <div class="scenario-card" data-scenario="webshell">
-            <div class="scen-icon">🐚</div>
-            <div class="scen-info">
-              <h4>Unauthorized Web Shell Execution</h4>
-              <p><code>nginx</code> worker process unexpectedly invokes interactive shell <code>/bin/bash -i</code></p>
-              <span class="scen-tag red">Mitre T1059.004 • High Risk</span>
-            </div>
-            <button class="btn-inject">Inject</button>
-          </div>
-
-          <div class="scenario-card" data-scenario="crypto">
-            <div class="scen-icon">⛏️</div>
-            <div class="scen-info">
-              <h4>Cryptocurrency Mining CPU Spike</h4>
-              <p>Disguised daemon <code>systemd-worker</code> consuming 98.6% CPU with Stratum mining pool socket</p>
-              <span class="scen-tag orange">Mitre T1496 • High Resource Abuse</span>
-            </div>
-            <button class="btn-inject">Inject</button>
-          </div>
-
-          <div class="scenario-card" data-scenario="ransomware">
-            <div class="scen-icon">🔒</div>
-            <div class="scen-info">
-              <h4>Rapid File Traversal / Ransomware</h4>
-              <p><code>python3</code> rapidly opening and modifying 4,200 user documents in 15 seconds</p>
-              <span class="scen-tag red">Mitre T1486 • Rapid Data Impact</span>
-            </div>
-            <button class="btn-inject">Inject</button>
-          </div>
-
-          <div class="scenario-card" data-scenario="reverseshell">
-            <div class="scen-icon">🔌</div>
-            <div class="scen-info">
-              <h4>Anomalous Outbound Reverse Shell</h4>
-              <p><code>cron</code> task initiating unexpected socket connection to external IP <code>198.51.100.42:4444</code></p>
-              <span class="scen-tag purple">Mitre T1071 • Suspicious C2 Channel</span>
-            </div>
-            <button class="btn-inject">Inject</button>
-          </div>
-
-          <div class="scenario-card" data-scenario="privesc">
-            <div class="scen-icon">👑</div>
-            <div class="scen-info">
-              <h4>Privilege Escalation Attempt</h4>
-              <p>Low-privilege service account <code>www-data</code> attempting unauthorized <code>sudo /bin/su</code></p>
-              <span class="scen-tag red">Mitre T1068 • Unauthorized Escalation</span>
-            </div>
-            <button class="btn-inject">Inject</button>
-          </div>
-
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 3. Local Isolation Privacy Audit Modal -->
-  <div class="modal-overlay" id="privacyModal">
-    <div class="modal-card">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <span class="modal-icon">🛡️</span>
-          <div>
-            <h2>Local Privacy & Isolation Guarantee</h2>
-            <p class="modal-subtitle">Verification of Chronicle's zero-cloud-telemetry architecture</p>
-          </div>
-        </div>
-        <button class="modal-close" id="closePrivacyModalBtn">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="privacy-checklist">
-          <div class="privacy-item verified">
-            <span class="priv-icon">✓</span>
-            <div>
-              <strong>Zero External Outbound Packets (0B Sent)</strong>
-              <p>No socket connections to external endpoints. Telemetry never leaves the Linux host kernel boundaries.</p>
-            </div>
-          </div>
-          <div class="privacy-item verified">
-            <span class="priv-icon">✓</span>
-            <div>
-              <strong>In-Process Machine Learning</strong>
-              <p>Isolation Forest & statistical baseline Gaussian deviation models evaluate in-memory without cloud inference.</p>
-            </div>
-          </div>
-          <div class="privacy-item verified">
-            <span class="priv-icon">✓</span>
-            <div>
-              <strong>Command-Line Sanitization</strong>
-              <p>Sensitive parameters (API keys, passwords, bearer tokens) are stripped before profile aggregation.</p>
-            </div>
-          </div>
-          <div class="privacy-item verified">
-            <span class="priv-icon">✓</span>
-            <div>
-              <strong>Non-Root Local App Sandbox</strong>
-              <p>The GUI runs as standard unprivileged user, communicating with the eBPF daemon via local UNIX domain sockets.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    </footer>
   </div>
 
   <script src="app.js"></script>
