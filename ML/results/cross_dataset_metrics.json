@@ -1,0 +1,46 @@
+{
+  "direct_full_model_compatible": false,
+  "incompatibility_reasons": [
+    "Feature namespace mismatch: ADFA-LD uses 'sc_<id>_count' (integer IDs), PLAID uses 'sc_<name>_count' (strings).",
+    "Kernel ABI differences: ADFA-LD was recorded on Linux 2.6.38 (32-bit x86), PLAID was recorded on Linux 4.15+ (64-bit x86_64).",
+    "Syscall table divergence: Syscall numbers in 32-bit and 64-bit Linux do not map 1:1, and original ADFA-LD mapping table was lost.",
+    "Dimensionality mismatch: ADFA-LD has 442 features vs PLAID's 401 features."
+  ],
+  "shared_features_tested": [
+    "seq_length",
+    "unique_syscall_count",
+    "syscall_diversity",
+    "repeated_consecutive",
+    "seq_entropy",
+    "max_run_length",
+    "run_count",
+    "run_ratio"
+  ],
+  "adfa_to_plaid": {
+    "direction": "ADFA-LD -> PLAID",
+    "accuracy": 0.8711,
+    "precision": 0.0267,
+    "recall": 0.0903,
+    "f1": 0.0412,
+    "confusion_matrix": {
+      "TN": 35441,
+      "FP": 4124,
+      "FN": 1139,
+      "TP": 113
+    }
+  },
+  "plaid_to_adfa": {
+    "direction": "PLAID -> ADFA-LD",
+    "accuracy": 0.6506,
+    "precision": 0.1202,
+    "recall": 0.2828,
+    "f1": 0.1687,
+    "confusion_matrix": {
+      "TN": 3661,
+      "FP": 1544,
+      "FN": 535,
+      "TP": 211
+    }
+  },
+  "conclusion": "Cross-dataset direct transfer confirms domain shift: structural features alone cannot generalize across different host environments (e.g. desktop Ubuntu 11.10 vs containerized multi-benchmark server). Chronicle must maintain dedicated dataset-specific models while standardizing the ingestion schema."
+}
