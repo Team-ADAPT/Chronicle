@@ -1,0 +1,17 @@
+{
+  "model": "XGBoost",
+  "dataset": "PLAID",
+  "n_estimators": 300,
+  "max_depth": 6,
+  "learning_rate": 0.05,
+  "subsample": 0.8,
+  "colsample_bytree": 0.8,
+  "min_child_weight": 3,
+  "scale_pos_weight": 31.587824351297407,
+  "test_size": 0.2,
+  "random_state": 42,
+  "split_strategy": "stratified_80_20",
+  "train_samples": 32653,
+  "test_samples": 8164,
+  "feature_count": 401
+}
