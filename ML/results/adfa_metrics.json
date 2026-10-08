@@ -1,0 +1,116 @@
+[
+  {
+    "model": "XGBoost",
+    "dataset": "ADFA-LD",
+    "accuracy": 0.97649,
+    "precision_attack": 0.88535,
+    "recall_attack": 0.932886,
+    "f1_attack": 0.908497,
+    "confusion_matrix": {
+      "TN": 1024,
+      "FP": 18,
+      "FN": 10,
+      "TP": 139
+    },
+    "feature_count": 442,
+    "top_features": [
+      {
+        "name": "sc_45_count",
+        "importance": 0.122055
+      },
+      {
+        "name": "sc_11_count",
+        "importance": 0.060117
+      },
+      {
+        "name": "sc_11_freq",
+        "importance": 0.040645
+      },
+      {
+        "name": "sc_42_count",
+        "importance": 0.032249
+      },
+      {
+        "name": "sc_57_freq",
+        "importance": 0.028926
+      },
+      {
+        "name": "sc_57_count",
+        "importance": 0.025674
+      },
+      {
+        "name": "bg_3_4",
+        "importance": 0.019699
+      },
+      {
+        "name": "sc_219_count",
+        "importance": 0.018766
+      },
+      {
+        "name": "sc_311_count",
+        "importance": 0.018628
+      },
+      {
+        "name": "sc_104_count",
+        "importance": 0.017432
+      },
+      {
+        "name": "sc_42_freq",
+        "importance": 0.015775
+      },
+      {
+        "name": "bg_221_221",
+        "importance": 0.015423
+      },
+      {
+        "name": "sc_180_freq",
+        "importance": 0.015238
+      },
+      {
+        "name": "sc_104_freq",
+        "importance": 0.012591
+      },
+      {
+        "name": "bg_240_240",
+        "importance": 0.012127
+      },
+      {
+        "name": "sc_311_freq",
+        "importance": 0.011711
+      },
+      {
+        "name": "bg_6_33",
+        "importance": 0.011141
+      },
+      {
+        "name": "sc_45_freq",
+        "importance": 0.009501
+      },
+      {
+        "name": "sc_168_count",
+        "importance": 0.009168
+      },
+      {
+        "name": "tg_168_168_265",
+        "importance": 0.009007
+      }
+    ]
+  },
+  {
+    "model": "IsolationForest",
+    "dataset": "ADFA-LD",
+    "mode": "unsupervised_anomaly_detection",
+    "trained_on": "normal_only",
+    "contamination": 0.25,
+    "accuracy": 0.67266,
+    "precision_attack": 0.070714,
+    "recall_attack": 0.132708,
+    "f1_attack": 0.092265,
+    "confusion_matrix": {
+      "TN": 3904,
+      "FP": 1301,
+      "FN": 647,
+      "TP": 99
+    }
+  }
+]

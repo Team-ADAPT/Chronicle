@@ -1,0 +1,185 @@
+{
+  "xgboost": {
+    "model": "XGBoost",
+    "dataset": "PLAID",
+    "accuracy": 0.995958,
+    "precision_attack": 0.883392,
+    "recall_attack": 1.0,
+    "f1_attack": 0.938086,
+    "confusion_matrix": {
+      "TN": 7881,
+      "FP": 33,
+      "FN": 0,
+      "TP": 250
+    },
+    "false_positive_rate": 0.00417,
+    "false_negative_rate": 0.0,
+    "per_category_recall": {
+      "cowroot": {
+        "total": 10,
+        "detected": 10,
+        "recall": 1.0
+      },
+      "ftp": {
+        "total": 53,
+        "detected": 53,
+        "recall": 1.0
+      },
+      "nginx": {
+        "total": 76,
+        "detected": 76,
+        "recall": 1.0
+      },
+      "privesc": {
+        "total": 12,
+        "detected": 12,
+        "recall": 1.0
+      },
+      "redis": {
+        "total": 38,
+        "detected": 38,
+        "recall": 1.0
+      },
+      "ssh": {
+        "total": 61,
+        "detected": 61,
+        "recall": 1.0
+      }
+    },
+    "feature_count": 401,
+    "top_features": [
+      {
+        "name": "tg_rt_sigaction_rt_sigaction_rt_sigaction",
+        "importance": 0.09876
+      },
+      {
+        "name": "sc_set_robust_list_freq",
+        "importance": 0.09132
+      },
+      {
+        "name": "sc_stat_count",
+        "importance": 0.08825
+      },
+      {
+        "name": "sc_rt_sigaction_count",
+        "importance": 0.071064
+      },
+      {
+        "name": "bg_openat_openat",
+        "importance": 0.044678
+      },
+      {
+        "name": "sc_getegid_count",
+        "importance": 0.037003
+      },
+      {
+        "name": "bg_close_close",
+        "importance": 0.029637
+      },
+      {
+        "name": "bg_lstat_lstat",
+        "importance": 0.020937
+      },
+      {
+        "name": "sc_close_count",
+        "importance": 0.019201
+      },
+      {
+        "name": "sc_rt_sigaction_freq",
+        "importance": 0.014483
+      },
+      {
+        "name": "sc_vfork_count",
+        "importance": 0.013211
+      },
+      {
+        "name": "bg_rt_sigaction_rt_sigaction",
+        "importance": 0.013139
+      },
+      {
+        "name": "sc_getrusage_count",
+        "importance": 0.013055
+      },
+      {
+        "name": "bg_read_read",
+        "importance": 0.012203
+      },
+      {
+        "name": "sc_sched_getaffinity_count",
+        "importance": 0.012144
+      },
+      {
+        "name": "sc_unlink_freq",
+        "importance": 0.011927
+      },
+      {
+        "name": "sc_setpgid_freq",
+        "importance": 0.0109
+      },
+      {
+        "name": "seq_entropy",
+        "importance": 0.010667
+      },
+      {
+        "name": "sc_madvise_count",
+        "importance": 0.010561
+      },
+      {
+        "name": "bg_lseek_lseek",
+        "importance": 0.009449
+      }
+    ]
+  },
+  "isolation_forest": {
+    "model": "IsolationForest",
+    "dataset": "PLAID",
+    "mode": "unsupervised_anomaly_detection",
+    "trained_on": "normal_only",
+    "contamination": 0.05,
+    "n_estimators": 300,
+    "accuracy": 0.92124,
+    "precision_anomaly": 0.110891,
+    "recall_anomaly": 0.224,
+    "f1_anomaly": 0.148344,
+    "confusion_matrix": {
+      "TN": 7465,
+      "FP": 449,
+      "FN": 194,
+      "TP": 56
+    },
+    "false_positive_rate": 0.056735,
+    "false_negative_rate": 0.776,
+    "per_category_recall": {
+      "cowroot": {
+        "total": 10,
+        "detected": 1,
+        "recall": 0.1
+      },
+      "ftp": {
+        "total": 53,
+        "detected": 9,
+        "recall": 0.1698
+      },
+      "nginx": {
+        "total": 76,
+        "detected": 29,
+        "recall": 0.3816
+      },
+      "privesc": {
+        "total": 12,
+        "detected": 0,
+        "recall": 0.0
+      },
+      "redis": {
+        "total": 38,
+        "detected": 8,
+        "recall": 0.2105
+      },
+      "ssh": {
+        "total": 61,
+        "detected": 9,
+        "recall": 0.1475
+      }
+    }
+  }
+}
