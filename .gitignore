@@ -49,6 +49,8 @@ credentials/
 *.backup
 *.sqlite
 *.sqlite3
+*.db
+data/
 database/data/
 postgres-data/
 .pgdata/
@@ -139,3 +141,4 @@ reference_screenshot_2.png
 .Trashes
 Thumbs.db
 Desktop.ini
+*.dSYM/
