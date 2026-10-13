@@ -48,28 +48,16 @@ class ChroniclePipeline:
         self.total_anomalies_detected = 0
 
     def _seed_baseline_profiles(self) -> None:
-        """Seed established 30-day historical baseline profiles for standard Linux processes."""
-        defaults = {
-            "systemd": {"user": "root", "cpu": 0.2, "mem": 18.4, "sys": 42},
-            "sshd": {"user": "root", "cpu": 0.4, "mem": 7.2, "sys": 85},
-            "nginx": {"user": "www-data", "cpu": 1.5, "mem": 42.0, "sys": 320},
-            "bash": {"user": "anurag", "cpu": 0.3, "mem": 9.8, "sys": 110},
-            "python3": {"user": "anurag", "cpu": 3.2, "mem": 65.0, "sys": 210},
-            "dockerd": {"user": "root", "cpu": 2.1, "mem": 120.0, "sys": 450},
-            "cron": {"user": "root", "cpu": 0.1, "mem": 4.5, "sys": 25},
-            "curl": {"user": "anurag", "cpu": 0.5, "mem": 12.0, "sys": 140},
-        }
-        for name, spec in defaults.items():
-            prof = ProcessProfile(comm=name, user=spec["user"])
-            # Seed 50 initial samples around typical value to establish running mean & variance
-            for _ in range(50):
-                prof.update(
-                    cpu=spec["cpu"] * (0.8 + 0.4 * (hash(name) % 100) / 100.0),
-                    mem=spec["mem"] * (0.9 + 0.2 * (hash(name) % 100) / 100.0),
-                    syscalls=int(spec["sys"] * (0.85 + 0.3 * (hash(name) % 100) / 100.0)),
-                    event_type="execve" if name in ("bash", "python3") else "sys_sample",
-                )
-            self.profiles[name] = prof
+        """Establish baseline profiles from initial live host process inspection."""
+        try:
+            initial_procs = self.collector.sample_active_processes(limit=40)
+            for p in initial_procs:
+                comm = p["comm"]
+                prof = ProcessProfile(comm=comm, user=p["user"])
+                prof.update(cpu=p["cpu"], mem=p["mem"], syscalls=p["syscalls"], event_type="sys_sample")
+                self.profiles[comm] = prof
+        except Exception as exc:
+            logger.debug("Baseline profile initialization: %s", exc)
 
     def process_raw_event(self, ev: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -179,21 +167,28 @@ class ChroniclePipeline:
         logger.info("Chronicle background telemetry pipeline stopped.")
 
     def _worker_loop(self) -> None:
-        """Background sampling loop."""
+        """Background sampling loop for real Linux kernel eBPF and host telemetry."""
         while self.is_running:
             try:
-                events = self.collector.sample_active_processes(limit=8)
-                for ev in events:
+                # 1. If kernel eBPF probes are active on Linux, poll kernel perf buffer
+                if self.collector.ebpf_enabled:
+                    kernel_events = self.collector.poll_kernel_events(timeout_ms=120)
+                    for ev in kernel_events:
+                        self.process_raw_event(ev)
+
+                # 2. Sample live host processes currently active on machine
+                live_proc_events = self.collector.sample_active_processes(limit=12)
+                for ev in live_proc_events:
                     self.process_raw_event(ev)
-                
-                # Periodically record system metrics
+
+                # 3. Record real host system metrics
                 sys_metrics = self.collector.get_system_metrics()
                 normalcy = self.get_normalcy_percent()
                 sys_metrics["normalcy_percent"] = normalcy
                 self.db.insert_system_metric(sys_metrics)
             except Exception as exc:
                 logger.warning("Error in pipeline worker loop: %s", exc)
-            
+
             time.sleep(self.config.sample_interval)
 
     def inject_simulation(self, scenario_key: str) -> Dict[str, Any]:

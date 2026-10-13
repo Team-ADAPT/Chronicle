@@ -241,52 +241,12 @@
     }
   }
 
-  // --- SEED DATA INITIALIZATION ---
+  // --- REAL TELEMETRY INITIALIZATION ---
   function initSeedData() {
     state.profiles = JSON.parse(JSON.stringify(BASELINE_DEFINITIONS));
     state.events = [];
     state.alerts = [];
-
-    const now = Date.now();
-    const commKeys = Object.keys(BASELINE_DEFINITIONS);
-
-    // Generate 18 normal baseline events
-    for (let i = 0; i < 18; i++) {
-      const comm = commKeys[i % commKeys.length];
-      const base = BASELINE_DEFINITIONS[comm];
-      const cpu = Math.max(0.1, +(base.avgCpu + (Math.random() - 0.5) * base.stdCpu * 1.6).toFixed(1));
-      const mem = Math.max(2, +(base.avgMem + (Math.random() - 0.5) * base.stdMem * 1.5).toFixed(1));
-      const syscalls = Math.max(10, Math.round(base.avgSyscalls + (Math.random() - 0.5) * 20));
-      const evType = base.typicalEvents[Math.floor(Math.random() * base.typicalEvents.length)];
-
-      state.events.unshift({
-        id: 'evt-' + (1000 + i),
-        timestamp: new Date(now - (18 - i) * 12000).toLocaleTimeString(),
-        comm: comm,
-        path: base.path,
-        pid: 1000 + (i * 127) % 8000,
-        ppid: i % 3 === 0 ? 1 : Math.floor(Math.random() * 800) + 100,
-        user: base.user,
-        cluster: base.cluster,
-        eventType: evType,
-        cpu: cpu,
-        mem: mem,
-        syscalls: syscalls,
-        riskScore: Math.floor(Math.random() * 18) + 4,
-        status: 'NORMAL',
-        anomalyDetails: null,
-        terminated: false
-      });
-    }
-
-    // Inject initial anomaly scenarios for security visibility
-    injectAnomalyByKey('webshell', new Date(now - 90000));
-    injectAnomalyByKey('crypto', new Date(now - 35000));
-
-    // Select the first event by default (for Inspect & End Task)
-    if (state.events.length > 0) {
-      state.selectedEventId = state.events[0].id;
-    }
+    state.selectedEventId = null;
   }
 
   // --- ML RISK EVALUATION ---
@@ -325,43 +285,12 @@
     };
   }
 
-  // --- INJECTION ENGINES ---
-  function injectRandomEvent() {
-    const commKeys = Object.keys(state.profiles);
-    const comm = commKeys[Math.floor(Math.random() * commKeys.length)];
-    const base = state.profiles[comm];
-
-    const cpu = Math.max(0.1, +(base.avgCpu + (Math.random() - 0.3) * base.stdCpu * 2.2).toFixed(1));
-    const mem = Math.max(2, +(base.avgMem + (Math.random() - 0.3) * base.stdMem * 2.0).toFixed(1));
-    const syscalls = Math.max(10, Math.round(base.avgSyscalls + (Math.random() - 0.5) * 40));
-    const evType = base.typicalEvents[Math.floor(Math.random() * base.typicalEvents.length)];
-
-    const rawEvent = {
-      id: 'evt-' + Date.now().toString().slice(-6),
-      timestamp: new Date().toLocaleTimeString(),
-      comm: comm,
-      path: base.path,
-      pid: Math.floor(Math.random() * 8500) + 1000,
-      ppid: Math.random() > 0.6 ? 1 : Math.floor(Math.random() * 900) + 100,
-      user: base.user,
-      cluster: base.cluster,
-      eventType: evType,
-      cpu: cpu,
-      mem: mem,
-      syscalls: syscalls,
-      riskScore: 0,
-      terminated: false
-    };
-
-    const evaluation = evaluateMLRisk(rawEvent);
-    rawEvent.riskScore = evaluation.riskScore;
-    rawEvent.status = evaluation.status;
-    rawEvent.anomalyDetails = evaluation.desc;
-
-    state.events.unshift(rawEvent);
-    if (state.events.length > 200) state.events.pop();
-
-    renderUI();
+  // --- REAL TELEMETRY STREAM SYNC ---
+  async function injectRandomEvent() {
+    if (state.backendConnected) {
+      await syncBackendData();
+      return;
+    }
   }
 
   async function injectAnomalyByKey(key, customDate = null) {
@@ -477,25 +406,25 @@
     const unackCount = state.alerts.filter(a => !a.acknowledged).length;
 
     const avgCpu = total ? (state.events.reduce((acc, e) => acc + e.cpu, 0) / total).toFixed(1) : '0.0';
-    const totalSyscalls = total ? state.events.slice(0, 10).reduce((acc, e) => acc + e.syscalls, 0) : 2840;
+    const totalSyscalls = total ? state.events.slice(0, 10).reduce((acc, e) => acc + e.syscalls, 0) : 0;
 
     if (state.backendStats) {
       if (cpuEl) cpuEl.textContent = state.backendStats.cpu_utilization_display || `${avgCpu}%`;
-      if (memEl) memEl.innerHTML = `${state.backendStats.memory_usage_display || '3.2 GB / 16 GB'}`;
+      if (memEl) memEl.innerHTML = `${state.backendStats.memory_usage_display || '0.0 GB'}`;
       if (syscallEl) syscallEl.innerHTML = `${state.backendStats.syscall_rate_display || totalSyscalls.toLocaleString() + ' calls/s'}`;
       const normalcy = state.backendStats.normalcy_percent != null ? state.backendStats.normalcy_percent : Math.max(25, 100 - (anomCount * 5.8)).toFixed(1);
       if (normalcyEl) normalcyEl.textContent = `${normalcy}%`;
       if (anomalyStatusText) anomalyStatusText.textContent = `${anomCount} Anomalies Active (>3σ)`;
     } else {
       if (cpuEl) cpuEl.textContent = `${avgCpu}%`;
-      if (memEl) memEl.innerHTML = `3.2 GB <span class="kpi-denom">/ 16 GB</span>`;
+      if (memEl) memEl.innerHTML = `0.0 GB <span class="kpi-denom">/ Host RAM</span>`;
       if (syscallEl) syscallEl.innerHTML = `${totalSyscalls.toLocaleString()} <span class="kpi-denom">calls/s</span>`;
       const normalcy = Math.max(25, 100 - (anomCount * 5.8)).toFixed(1);
       if (normalcyEl) normalcyEl.textContent = `${normalcy}%`;
       if (anomalyStatusText) anomalyStatusText.textContent = `${anomCount} Anomalies Active (>3σ)`;
     }
 
-    if (totalEventsBadge) totalEventsBadge.textContent = (1428 + state.events.length).toLocaleString();
+    if (totalEventsBadge) totalEventsBadge.textContent = state.events.length.toLocaleString();
     if (anomalySegBadge) anomalySegBadge.textContent = anomCount;
     if (menuAlertBadge) menuAlertBadge.textContent = unackCount;
   }
@@ -1071,8 +1000,12 @@
       if (resStats) {
         state.backendStats = resStats;
         const kernelBadge = document.querySelector('.retro-titlebar-chip');
-        if (kernelBadge && resStats.ebpf_active) {
-          kernelBadge.textContent = 'KERNEL: eBPF / BCC ACTIVE';
+        if (kernelBadge) {
+          kernelBadge.textContent = resStats.ebpf_active ? 'KERNEL: eBPF / BCC ACTIVE' : 'KERNEL: LIVE HOST TELEMETRY';
+        }
+        const statusPane = document.querySelector('.retro-status-pane span:nth-child(2)');
+        if (statusPane) {
+          statusPane.textContent = resStats.ebpf_active ? 'eBPF: ACTIVE (KERNEL PROBES)' : 'TELEMETRY: ACTIVE (HOST PSUTIL)';
         }
       }
 

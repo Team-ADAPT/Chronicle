@@ -67,19 +67,19 @@ class RiskEngine:
         # 3. Contextual OS Security Heuristics
         for flag in heuristic_flags:
             if flag == "interactive_shell_from_daemon":
-                base_score += 50.0
+                base_score += 75.0
                 reasons.append(f"Unauthorized interactive shell spawned from daemon '{comm}'")
             elif flag == "crypto_mining":
-                base_score += 45.0
+                base_score += 70.0
                 reasons.append("Sustained high compute threads with abnormal hash/math execution pattern")
             elif flag == "mass_file_traversal":
-                base_score += 45.0
+                base_score += 75.0
                 reasons.append("Rapid mass file traversal with potential encryption intent (ransomware indicator)")
             elif flag == "reverse_shell_socket":
-                base_score += 55.0
+                base_score += 75.0
                 reasons.append("Anomalous outbound socket connection initiated by background system utility")
             elif flag == "privilege_escalation":
-                base_score += 50.0
+                base_score += 70.0
                 reasons.append("Unusual setuid/sudo invocation attempting privilege escalation")
 
         # Bound score between 5 (nominal jitter) and 99
