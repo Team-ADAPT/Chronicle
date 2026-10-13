@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 
 @dataclass
 class DatabaseConfig:
-    """PostgreSQL connection settings, supporting DATABASE_URL or individual parameters."""
+    """Database connection settings, supporting PostgreSQL (DATABASE_URL) or SQLite fallback."""
     database_url: Optional[str] = None
     host: Optional[str] = None
     port: int = 5432
@@ -23,11 +23,16 @@ class DatabaseConfig:
     pool_min: int = 1
     pool_max: int = 10
     connect_timeout: float = 10.0
+    engine: str = "auto"  # "auto", "postgresql", "sqlite"
+    sqlite_path: str = "chronicle.db"
 
     @classmethod
     def from_env(cls, env: Optional[Mapping[str, str]] = None) -> "DatabaseConfig":
         """Construct configuration from environment variables."""
         e = env if env is not None else os.environ
+
+        engine = e.get("CHRONICLE_DB_ENGINE", "auto").lower()
+        sqlite_path = e.get("CHRONICLE_SQLITE_PATH", "chronicle.db")
 
         raw_url = e.get("DATABASE_URL") or e.get("CHRONICLE_DATABASE_URL")
         if raw_url:
@@ -45,6 +50,8 @@ class DatabaseConfig:
                 pool_min=int(e.get("CHRONICLE_DB_POOL_MIN", "1")),
                 pool_max=int(e.get("CHRONICLE_DB_POOL_MAX", "10")),
                 connect_timeout=float(e.get("CHRONICLE_DB_TIMEOUT", "10.0")),
+                engine=engine,
+                sqlite_path=sqlite_path,
             )
 
         host = e.get("CHRONICLE_DB_HOST") or e.get("PGHOST")
@@ -69,16 +76,40 @@ class DatabaseConfig:
             pool_min=int(e.get("CHRONICLE_DB_POOL_MIN", "1")),
             pool_max=int(e.get("CHRONICLE_DB_POOL_MAX", "10")),
             connect_timeout=float(e.get("CHRONICLE_DB_TIMEOUT", "10.0")),
+            engine=engine,
+            sqlite_path=sqlite_path,
         )
 
     def is_configured(self) -> bool:
-        """Return True if sufficient settings exist to attempt a PostgreSQL connection."""
+        """Return True if sufficient settings exist to connect to a database."""
+        if self.engine == "sqlite":
+            return True
+        if self.database_url:
+            return True
+        if self.host and self.dbname:
+            return True
+        # In auto mode, SQLite fallback ensures the database is always operational
+        return self.engine == "auto"
+
+    def is_postgres_configured(self) -> bool:
+        """Return True if explicit PostgreSQL credentials/URL are configured."""
         if self.database_url:
             return True
         return bool(self.host and self.dbname)
 
+    def effective_engine(self) -> str:
+        """Determine whether PostgreSQL or SQLite should be utilized."""
+        if self.engine == "sqlite":
+            return "sqlite"
+        if self.engine == "postgresql":
+            return "postgresql"
+        # auto mode: use postgresql only if configured
+        return "postgresql" if self.is_postgres_configured() else "sqlite"
+
     def is_local(self) -> bool:
-        """Return True if connection targets the user's local machine (localhost, 127.0.0.1, or local Unix socket)."""
+        """Return True if connection targets the user's local machine."""
+        if self.effective_engine() == "sqlite":
+            return True
         if self.database_url:
             try:
                 parsed = urlparse(self.database_url)
@@ -118,6 +149,9 @@ class DatabaseConfig:
 
     def masked_conninfo(self) -> str:
         """Return safe string with password scrubbed for logging and diagnostics."""
+        if self.effective_engine() == "sqlite":
+            return f"sqlite:///{self.sqlite_path}"
+
         if self.database_url:
             try:
                 p = urlparse(self.database_url)

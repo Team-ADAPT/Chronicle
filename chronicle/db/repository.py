@@ -20,15 +20,17 @@ from chronicle.db.models import (
     SystemMetric,
     TelemetryEvent,
 )
+from chronicle.db.privacy import redact_string, sanitize_dict
 
 logger = logging.getLogger("chronicle.db.repository")
 
 
 class TelemetryRepository:
-    """PostgreSQL data access layer for Chronicle telemetry and historical baselines."""
+    """PostgreSQL and SQLite data access layer for Chronicle telemetry and historical baselines."""
 
-    def __init__(self, database: Optional[Database] = None):
+    def __init__(self, database: Optional[Database] = None, enable_privacy_filter: bool = True):
         self.db = database or Database()
+        self.enable_privacy_filter = enable_privacy_filter
 
     # -------------------------------------------------------------------------
     # Process Instances
@@ -55,6 +57,7 @@ class TelemetryRepository:
                 updated_at = CURRENT_TIMESTAMP
             RETURNING instance_id;
         """
+        meta = sanitize_dict(inst.metadata) if self.enable_privacy_filter else inst.metadata
         params = (
             inst.instance_id,
             inst.profile_id,
@@ -70,7 +73,7 @@ class TelemetryRepository:
             inst.exit_code,
             inst.preexisting,
             inst.windows_written,
-            json.dumps(inst.metadata),
+            json.dumps(meta),
         )
         with self.db.cursor() as cur:
             cur.execute(sql, params)
@@ -117,7 +120,7 @@ class TelemetryRepository:
                 i.exit_code,
                 i.preexisting,
                 i.windows_written,
-                json.dumps(i.metadata),
+                json.dumps(sanitize_dict(i.metadata) if self.enable_privacy_filter else i.metadata),
             )
             for i in instances
         ]
@@ -180,6 +183,12 @@ class TelemetryRepository:
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING event_id;
         """
+        file_id = (
+            redact_string(event.file_identifier)
+            if (self.enable_privacy_filter and event.file_identifier)
+            else event.file_identifier
+        )
+        payload = sanitize_dict(event.payload) if self.enable_privacy_filter else event.payload
         params = (
             event.event_uuid,
             event.instance_id,
@@ -187,9 +196,9 @@ class TelemetryRepository:
             event.timestamp,
             event.event_type,
             event.syscall_category,
-            event.file_identifier,
+            file_id,
             event.network_identifier,
-            json.dumps(event.payload),
+            json.dumps(payload),
         )
         with self.db.cursor() as cur:
             cur.execute(sql, params)
@@ -215,9 +224,9 @@ class TelemetryRepository:
                 e.timestamp,
                 e.event_type,
                 e.syscall_category,
-                e.file_identifier,
+                redact_string(e.file_identifier) if (self.enable_privacy_filter and e.file_identifier) else e.file_identifier,
                 e.network_identifier,
-                json.dumps(e.payload),
+                json.dumps(sanitize_dict(e.payload) if self.enable_privacy_filter else e.payload),
             )
             for e in events
         ]

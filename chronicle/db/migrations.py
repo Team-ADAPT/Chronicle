@@ -1,5 +1,5 @@
 """
-Versioned schema migration runner for Chronicle PostgreSQL storage.
+Versioned schema migration runner for Chronicle dual-engine storage (PostgreSQL / SQLite).
 Discovers and applies SQL migration files in sequence, tracking applied state.
 """
 
@@ -8,6 +8,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
@@ -52,8 +53,20 @@ def discover_migrations(sql_dir: Optional[Path] = None) -> List[Migration]:
 
 def get_applied_versions(conn) -> Set[int]:
     """Return set of migration versions already applied to the database."""
+    if isinstance(conn, sqlite3.Connection):
+        cur = conn.cursor()
+        try:
+            cur.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='schema_migrations';")
+            if not cur.fetchone():
+                return set()
+            cur.execute("SELECT version FROM schema_migrations ORDER BY version;")
+            rows = cur.fetchall()
+            return {r[0] for r in rows}
+        finally:
+            cur.close()
+
     with conn.cursor() as cur:
-        # Check if table exists
+        # PostgreSQL check
         cur.execute("""
             SELECT EXISTS (
                 SELECT FROM information_schema.tables
@@ -77,6 +90,18 @@ def apply_migration(conn, migration: Migration) -> None:
     sql = migration.read_sql()
     logger.info("Applying migration %03d: %s", migration.version, migration.name)
 
+    if isinstance(conn, sqlite3.Connection):
+        conn.executescript(sql)
+        conn.execute(
+            """
+            INSERT INTO schema_migrations (version, name, applied_at)
+            VALUES (?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT (version) DO NOTHING;
+            """,
+            (migration.version, migration.name),
+        )
+        return
+
     with conn.cursor() as cur:
         cur.execute(sql)
         cur.execute(
@@ -92,14 +117,44 @@ def apply_migration(conn, migration: Migration) -> None:
 def run_migrations(
     database: Optional[Database] = None, sql_dir: Optional[Path] = None
 ) -> List[Migration]:
-    """Run all unapplied migrations against the target database."""
+    """Run all unapplied migrations against the target database (PostgreSQL or SQLite)."""
     db = database or Database()
-    all_migrations = discover_migrations(sql_dir)
+    directory = sql_dir or SQL_DIR
     applied: List[Migration] = []
 
     with db.connection() as conn:
         already_applied = get_applied_versions(conn)
 
+        if db.engine == "sqlite":
+            sqlite_file = directory / "sqlite_schema.sql"
+            all_migrations = discover_migrations(directory)
+            if not already_applied:
+                if sqlite_file.is_file():
+                    logger.info("Applying full SQLite schema from %s", sqlite_file)
+                    conn.executescript(sqlite_file.read_text(encoding="utf-8"))
+                    for m in all_migrations:
+                        conn.execute(
+                            "INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT (version) DO NOTHING;",
+                            (m.version, m.name),
+                        )
+                        applied.append(m)
+                    if not all_migrations:
+                        conn.execute(
+                            "INSERT INTO schema_migrations (version, name, applied_at) VALUES (1, 'sqlite_initial_schema', CURRENT_TIMESTAMP) ON CONFLICT (version) DO NOTHING;"
+                        )
+                        applied.append(Migration(1, "sqlite_initial_schema", sqlite_file))
+                return applied
+            else:
+                # Tables exist, check if newer migrations exist
+                for m in all_migrations:
+                    if m.version not in already_applied:
+                        # Attempt applying
+                        apply_migration(conn, m)
+                        applied.append(m)
+                return applied
+
+        # PostgreSQL execution
+        all_migrations = discover_migrations(directory)
         for migration in all_migrations:
             if migration.version not in already_applied:
                 apply_migration(conn, migration)

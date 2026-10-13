@@ -1,5 +1,5 @@
 """
-CLI entry point for Chronicle database operations:
+CLI entry point for Chronicle dual-engine database operations:
   python -m chronicle.db migrate
   python -m chronicle.db status
   python -m chronicle.db retention [--dry-run]
@@ -21,7 +21,7 @@ from chronicle.db.retention import RetentionManager
 def main():
     parser = argparse.ArgumentParser(
         prog="python -m chronicle.db",
-        description="Chronicle PostgreSQL database management utility",
+        description="Chronicle PostgreSQL & SQLite database management utility",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -46,22 +46,22 @@ def main():
     cfg = DatabaseConfig.from_env()
 
     if args.command == "status":
-        print("Chronicle PostgreSQL Status:")
-        print(f"  • Configured: {cfg.is_configured()}")
+        db = Database(cfg)
+        health = db.check_health()
+        engine_label = "PostgreSQL" if db.engine == "postgresql" else "SQLite (Local Fallback)"
+
+        print(f"Chronicle Storage Status [{engine_label}]:")
+        print(f"  • Engine:     {db.engine.upper()}")
         print(f"  • Connection: {cfg.masked_conninfo()}")
-        if not cfg.is_configured():
-            print("  • Notice: DATABASE_URL is not set.")
-            sys.exit(0)
+
         locality = "User-Side Local (100% Private)" if cfg.is_local() else "Remote Server"
         enforce_local = os.getenv("CHRONICLE_ENFORCE_LOCAL_DB", "1").lower() in ("1", "true", "yes", "on")
         privacy_status = "Active (Remote connections blocked)" if enforce_local else "Permissive"
 
         print(f"  • Locality:   {locality}")
         print(f"  • Privacy:    {privacy_status}")
-
-        db = Database(cfg)
-        health = db.check_health()
         print(f"  • Connected:  {health.get('connected')}")
+
         if health.get("connected"):
             print(f"  • Latency:    {health.get('latency_ms')} ms")
             print(f"  • Database:   {health.get('database')}")
@@ -72,36 +72,32 @@ def main():
             sys.exit(1)
 
     elif args.command == "migrate":
-        if not cfg.is_configured():
-            print("Error: DATABASE_URL is not set.", file=sys.stderr)
-            sys.exit(1)
         db = Database(cfg)
         applied = run_migrations(db)
+        engine_label = db.engine.upper()
         if applied:
-            print(f"Applied {len(applied)} migration(s):")
+            print(f"Applied {len(applied)} {engine_label} migration(s):")
             for m in applied:
                 print(f"  • {m.version:03d}_{m.name}")
         else:
-            print("Database schema is up to date (0 pending migrations).")
+            print(f"Database schema ({engine_label}) is up to date (0 pending migrations).")
 
     elif args.command == "retention":
-        if not cfg.is_configured():
-            print("Error: DATABASE_URL is not set.", file=sys.stderr)
-            sys.exit(1)
         db = Database(cfg)
         mgr = RetentionManager(db)
         res = mgr.purge_expired_data(dry_run=args.dry_run)
         mode = "[DRY-RUN]" if args.dry_run else "[EXECUTED]"
-        print(f"Chronicle Retention Cleanup {mode}:")
+        print(f"Chronicle Retention Cleanup {mode} ({db.engine.upper()}):")
         for tbl, count in res.items():
             print(f"  • {tbl}: {count} rows")
 
     elif args.command == "ingest":
-        if not cfg.is_configured():
-            print("Error: DATABASE_URL is not set.", file=sys.stderr)
-            sys.exit(1)
-        counts = ingest_experiment(args.path, batch_size=args.batch_size)
-        print("Ingestion complete:")
+        db = Database(cfg)
+        run_migrations(db)
+        from chronicle.db.repository import TelemetryRepository
+        repo = TelemetryRepository(db)
+        counts = ingest_experiment(args.path, repository=repo, batch_size=args.batch_size)
+        print(f"Ingestion complete ({db.engine.upper()}):")
         for k, v in counts.items():
             print(f"  • {k}: {v} records")
 
