@@ -23,7 +23,9 @@
     filterText: '',
     filterCluster: null,
     selectedEventId: null,
-    currentTheme: 'light'
+    currentTheme: 'light',
+    backendConnected: false,
+    backendStats: null
   };
 
   // --- BASELINE DEFINITIONS (30-Day Historical Baselines) ---
@@ -362,7 +364,23 @@
     renderUI();
   }
 
-  function injectAnomalyByKey(key, customDate = null) {
+  async function injectAnomalyByKey(key, customDate = null) {
+    if (state.backendConnected) {
+      try {
+        const resp = await fetch('/api/simulate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scenario: key })
+        });
+        if (resp.ok) {
+          await syncBackendData();
+          return;
+        }
+      } catch (err) {
+        console.warn('Backend simulate failed, using local fallback:', err);
+      }
+    }
+
     const scenario = ANOMALY_SCENARIOS[key] || ANOMALY_SCENARIOS['webshell'];
     const timestamp = (customDate || new Date()).toLocaleTimeString();
 
@@ -405,10 +423,21 @@
     renderUI();
   }
 
-  // --- TERMINATE / END TASK SIMULATION (Windows Task Manager) ---
-  function terminateProcess(eventId) {
+  async function terminateProcess(eventId) {
     const ev = state.events.find(e => e.id === eventId);
     if (!ev) return;
+
+    if (state.backendConnected && ev.pid) {
+      try {
+        await fetch('/api/kill', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pid: ev.pid })
+        });
+      } catch (err) {
+        console.warn('Backend kill failed:', err);
+      }
+    }
 
     ev.terminated = true;
     ev.status = 'TERMINATED';
@@ -450,13 +479,21 @@
     const avgCpu = total ? (state.events.reduce((acc, e) => acc + e.cpu, 0) / total).toFixed(1) : '0.0';
     const totalSyscalls = total ? state.events.slice(0, 10).reduce((acc, e) => acc + e.syscalls, 0) : 2840;
 
-    if (cpuEl) cpuEl.textContent = `${avgCpu}%`;
-    if (memEl) memEl.innerHTML = `3.2 GB <span class="kpi-denom">/ 16 GB</span>`;
-    if (syscallEl) syscallEl.innerHTML = `${totalSyscalls.toLocaleString()} <span class="kpi-denom">calls/s</span>`;
-    
-    const normalcy = Math.max(25, 100 - (anomCount * 5.8)).toFixed(1);
-    if (normalcyEl) normalcyEl.textContent = `${normalcy}%`;
-    if (anomalyStatusText) anomalyStatusText.textContent = `${anomCount} Anomalies Active (>3σ)`;
+    if (state.backendStats) {
+      if (cpuEl) cpuEl.textContent = state.backendStats.cpu_utilization_display || `${avgCpu}%`;
+      if (memEl) memEl.innerHTML = `${state.backendStats.memory_usage_display || '3.2 GB / 16 GB'}`;
+      if (syscallEl) syscallEl.innerHTML = `${state.backendStats.syscall_rate_display || totalSyscalls.toLocaleString() + ' calls/s'}`;
+      const normalcy = state.backendStats.normalcy_percent != null ? state.backendStats.normalcy_percent : Math.max(25, 100 - (anomCount * 5.8)).toFixed(1);
+      if (normalcyEl) normalcyEl.textContent = `${normalcy}%`;
+      if (anomalyStatusText) anomalyStatusText.textContent = `${anomCount} Anomalies Active (>3σ)`;
+    } else {
+      if (cpuEl) cpuEl.textContent = `${avgCpu}%`;
+      if (memEl) memEl.innerHTML = `3.2 GB <span class="kpi-denom">/ 16 GB</span>`;
+      if (syscallEl) syscallEl.innerHTML = `${totalSyscalls.toLocaleString()} <span class="kpi-denom">calls/s</span>`;
+      const normalcy = Math.max(25, 100 - (anomCount * 5.8)).toFixed(1);
+      if (normalcyEl) normalcyEl.textContent = `${normalcy}%`;
+      if (anomalyStatusText) anomalyStatusText.textContent = `${anomCount} Anomalies Active (>3σ)`;
+    }
 
     if (totalEventsBadge) totalEventsBadge.textContent = (1428 + state.events.length).toLocaleString();
     if (anomalySegBadge) anomalySegBadge.textContent = anomCount;
@@ -781,13 +818,17 @@
       if (sideIcon) sideIcon.textContent = '⏸';
       if (sideText) sideText.textContent = 'Pause Stream';
 
-      state.streamTimer = setInterval(() => {
-        if (Math.random() < 0.14) {
-          const keys = Object.keys(ANOMALY_SCENARIOS);
-          const randKey = keys[Math.floor(Math.random() * keys.length)];
-          injectAnomalyByKey(randKey);
+      state.streamTimer = setInterval(async () => {
+        if (state.backendConnected) {
+          await syncBackendData();
         } else {
-          injectRandomEvent();
+          if (Math.random() < 0.14) {
+            const keys = Object.keys(ANOMALY_SCENARIOS);
+            const randKey = keys[Math.floor(Math.random() * keys.length)];
+            injectAnomalyByKey(randKey);
+          } else {
+            injectRandomEvent();
+          }
         }
       }, 1500);
     } else {
@@ -988,12 +1029,72 @@
     }, 1000);
   }
 
+  // --- BACKEND API SYNCHRONIZATION ---
+  async function syncBackendData() {
+    try {
+      const [resStats, resEvents, resAlerts, resProfiles] = await Promise.all([
+        fetch('/api/stats').then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch('/api/events?limit=80').then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch('/api/alerts?limit=40').then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch('/api/profiles').then(r => r.ok ? r.json() : null).catch(() => null)
+      ]);
+
+      if (resStats || resEvents) {
+        state.backendConnected = true;
+      }
+
+      if (resEvents && resEvents.length > 0) {
+        state.events = resEvents.map(e => ({
+          ...e,
+          cluster: (state.profiles[e.comm] && state.profiles[e.comm].cluster) || 'systemd'
+        }));
+      }
+
+      if (resAlerts && resAlerts.length > 0) {
+        state.alerts = resAlerts.map(a => ({
+          id: a.id,
+          timestamp: a.timestamp,
+          comm: a.comm,
+          pid: a.pid,
+          riskScore: a.riskScore,
+          anomalyType: a.category,
+          mitre: a.category,
+          desc: a.description || (Array.isArray(a.reasons) ? a.reasons.join(' • ') : a.reasons),
+          acknowledged: a.status === 'ACKNOWLEDGED'
+        }));
+      }
+
+      if (resProfiles && Object.keys(resProfiles).length > 0) {
+        state.profiles = { ...state.profiles, ...resProfiles };
+      }
+
+      if (resStats) {
+        state.backendStats = resStats;
+        const kernelBadge = document.querySelector('.retro-titlebar-chip');
+        if (kernelBadge && resStats.ebpf_active) {
+          kernelBadge.textContent = 'KERNEL: eBPF / BCC ACTIVE';
+        }
+      }
+
+      renderUI();
+    } catch (err) {
+      console.warn('Backend sync paused:', err);
+    }
+  }
+
   // --- INITIALIZATION ---
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', async () => {
     initSeedData();
     setupEventListeners();
     renderUI();
     startClock();
+
+    // Check backend connection and sync real host telemetry & ML predictions
+    await syncBackendData();
+    // Background polling every 2.5s
+    setInterval(() => {
+      if (!state.isStreaming) syncBackendData();
+    }, 2500);
   });
 
 })();
