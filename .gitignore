@@ -50,8 +50,6 @@ credentials/
 *.sqlite
 *.sqlite3
 *.db
-*.db-wal
-*.db-shm
 data/
 database/data/
 postgres-data/
@@ -144,3 +142,4 @@ reference_screenshot_2.png
 .Trashes
 Thumbs.db
 Desktop.ini
+*.dSYM/
