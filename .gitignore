@@ -54,6 +54,7 @@ data/
 database/data/
 postgres-data/
 .pgdata/
+*.spec
 
 # ML datasets
 ML/DATA/
