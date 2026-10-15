@@ -12,70 +12,71 @@
   Chronicle combines local Linux telemetry, historical process baselines, and machine-learning models to help identify unusual or potentially malicious behaviour.
 </p>
 
-> **Current status:** The repository contains a functional local dashboard, a Linux eBPF telemetry collector, ML training pipelines, and evaluation artifacts. Database persistence, deployment integration, and production hardening are still under development.
+> **Current status:** Chronicle features an end-to-end working pipeline: Linux eBPF kernel telemetry collection, a dual-engine relational DBMS (PostgreSQL + SQLite) with automated migrations and retention, a robust historical behavioural profiling engine, embedded Scikit-learn/XGBoost ML anomaly detectors, an explainable risk scoring engine, a lightweight native desktop UI (`pywebview`), and Debian (`.deb`) packaging.
 
 ---
 
 ## Overview
 
-Chronicle is a research-oriented security project for understanding how a process behaves over time, rather than judging individual events in isolation. It records process lifecycle activity, file and network events, resource usage, and syscall patterns, then compares current activity with historical baselines.
+Chronicle is a host behavioural analysis and threat-detection system designed around a foundational principle: **individual events lack context; historical behaviour reveals anomalies**. Rather than judging process actions in isolation or over brief observation windows, Chronicle persistently tracks process lifecycles, file and network events, resource usage, and syscall patterns, storing structured telemetry locally and comparing active executions against long-term historical baselines.
 
-The system is designed around a local-first workflow:
+The system is designed around a strict local-first, privacy-preserving workflow:
 
-1. Observe host activity with eBPF and system-level telemetry.
-2. Normalize events into behaviour windows and process profiles.
-3. Extract structured features for machine-learning analysis.
-4. Combine supervised and unsupervised detectors with contextual risk indicators.
-5. Present findings through a local web or desktop interface.
+1. **Observe:** Capture host kernel activity via eBPF probes with seamless fallback to `psutil`.
+2. **Normalize & Scrub:** Clean telemetry events into structured 5-second behaviour windows while redacting credentials and sensitive user data.
+3. **Persist:** Store structured telemetry, windows, metrics, and profiles in a local PostgreSQL or SQLite database.
+4. **Profile:** Build outlier-resistant historical baselines (Median, NMAD, IQR) per program identity across multiple executions.
+5. **Detect:** Evaluate feature deviations using embedded Scikit-learn / XGBoost models alongside statistical anomaly checks.
+6. **Score & Explain:** Combine multi-category evidence into an explainable 0–100 risk score.
+7. **Present:** Surface real-time processes, baselines, and alerts in a native Linux desktop application (`pywebview`).
 
 ---
 
 ## Key Features
 
-- **Linux eBPF telemetry collection** for process execution, file activity, network connections, syscall counts, and I/O statistics.
-- **Behaviour-window aggregation** with process, system, and event-level metrics.
-- **Privacy-conscious collection** using local processing and optional hashed file paths.
-- **Historical baselines** for process families and workload profiles.
-- **Interactive dashboard** with live activity, anomaly scenarios, process inspection, filters, and theme selection.
-- **Supervised detection** using XGBoost for ADFA-LD and PLAID datasets.
-- **Unsupervised detection** using Isolation Forest as a complementary detector.
-- **Cross-dataset evaluation** for measuring feature and model transfer limitations.
-- **Debian package scaffolding** for distributing the local application.
+- **Linux eBPF Telemetry Collection:** Real-time kernel probes for process execution, lifecycle, file activity, network connections, syscall counts, and I/O statistics.
+- **Relational DBMS & History Layer:** PostgreSQL and SQLite dual-engine storage with automatic schema migrations, foreign keys, and indexes for fast temporal queries.
+- **Robust Behavioural Baselines:** Outlier-resistant statistical profiling (Median, NMAD) handling cold-starts, concept drift, and baseline anti-poisoning.
+- **Privacy-Preserving Local-First Design:** 100% of telemetry and analysis stays on the host; automatic credential sanitization (`password`, `token`, `secret`, `api_key`).
+- **In-Process Machine Learning:** Embedded XGBoost and Isolation Forest models running directly in Python without remote API dependencies.
+- **Explainable Risk Scoring:** Transparent 0–100 risk scores with granular diagnostic evidence (e.g., "Network activity 4.2× historical baseline").
+- **Native Desktop Dashboard:** Lightweight WebKit desktop application (`pywebview`) featuring Overview, Process, Historical Baseline, and Alert Investigation views.
+- **Debian (.deb) Packaging:** Complete packaging pipeline for one-command installation (`dpkg -i`) and Linux application menu integration.
 
 ---
 
 ## Architecture
 
 ```text
-Linux host
+Linux Host
     │
     ▼
-eBPF probes and psutil telemetry
+eBPF / C Kernel Probes (BCC)
     │
     ▼
-Normalization and privacy filtering
+Collection & Normalization
     │
     ▼
-Process instances + telemetry events
+Privacy Sanitization Layer
     │
     ▼
-Behaviour windows and feature extraction
+Local Database Storage (PostgreSQL / SQLite)
     │
     ▼
-XGBoost / Isolation Forest analysis
+Historical Behaviour Profiles (Median, NMAD, Z-scores)
     │
     ▼
-Risk scoring and explainable findings
+Feature Extraction (Historical vs Live Deltas)
     │
     ▼
-Chronicle dashboard
+In-Process ML Detection (Isolation Forest & XGBoost)
+    │
+    ▼
+Risk Scoring & Explanation (0-100 Score + Evidence)
+    │
+    ▼
+Chronicle Desktop App (pywebview / WebKit Window)
 ```
-
-The implementation is currently split into three main areas:
-
-- **Runtime:** the desktop entry point and browser interface in `app.py` and `ui/`.
-- **Telemetry:** the eBPF collector in `eBPF_collector.py`.
-- **Machine learning:** dataset loaders, feature engineering, training scripts, models, metrics, and tests under `ML/`.
 
 ---
 
@@ -83,51 +84,150 @@ The implementation is currently split into three main areas:
 
 ```text
 Chronicle/
-├── app.py                    # Local web and native-window entry point
-├── eBPF_collector.py         # Linux eBPF telemetry collection pipeline
-├── ui/                       # Web dashboard assets
-├── ML/
-│   ├── src/                  # Dataset, preprocessing, feature, and training code
-│   ├── models/               # Trained models and feature schemas
-│   ├── results/              # Evaluation reports and metrics
-│   └── tests/                # Pipeline and model tests
-├── packaging/                # Debian package build assets
-├── CONTRIBUTING.md           # Contribution conventions
-└── README.md                 # Project documentation
+├── README.md                 # Project overview and quickstart guide
+├── CONTRIBUTING.md           # Conventional Commits and development workflow
+├── LICENSE                   # MIT open-source license
+├── Project.md                # Full academic & architectural specification
+├── SUMMARY.md                # Project development summary and progress report
+├── requirements.txt          # Python dependency specifications
+│
+├── docs/                     # Specifications and architectural documentation
+│   ├── proposal.md           # Formal PBL project proposal
+│   └── architecture.md       # Detailed system architecture and dataflows
+│
+├── src/                      # Canonical Python package
+│   └── chronicle/            # Collector, pipeline orchestrator, ML detector, risk engine, API
+│       ├── api.py            # Local REST API handler
+│       ├── collector.py      # Kernel eBPF & psutil telemetry collector
+│       ├── config.py         # System configuration
+│       ├── ml_detector.py    # In-process Scikit-learn/XGBoost inference engine
+│       ├── pipeline.py       # Central orchestrator connecting OS, DBMS, ML, and UI
+│       ├── risk_engine.py    # Contextual risk scoring and explainable alerting
+│       └── storage.py        # Lightweight local cache storage
+│
+├── chronicle/                # Database and History Repository layer
+│   └── db/                   # Connection pool, models, repository, profiling, privacy, migrations
+│       ├── connection.py     # Dual-engine PostgreSQL & SQLite connection manager
+│       ├── models.py         # Relational data classes and lifecycle models
+│       ├── privacy.py        # Sensitive data redaction and path masking
+│       ├── profiling.py      # Robust statistical baselining engine
+│       ├── repository.py     # Data access layer for telemetry, profiles, and detections
+│       ├── retention.py      # Automated database pruning and retention
+│       └── sql/              # Versioned migration scripts
+│
+├── database/                 # DBMS specifications and master schema
+│   ├── schema.sql            # Consolidated master DDL schema
+│   └── README.md             # Relational model and DBMS documentation
+│
+├── ebpf/                     # Kernel observation layer documentation
+│   └── README.md             # eBPF/BCC probes, event structures, and kernel hooks
+│
+├── research/                 # Academic and ML research documentation
+│   └── README.md             # Model A vs Model B evaluation framework and benchmarks
+│
+├── tests/                    # Comprehensive unit and integration test suites
+│   ├── test_chronicle_pipeline.py  # Pipeline, ML inference, and API tests
+│   ├── test_db_storage.py          # Database storage, profiling, and privacy tests
+│   └── README.md                   # Test runner guide and coverage breakdown
+│
+├── scripts/                  # Automation and utility scripts
+│   ├── run_dev.sh            # Launch Chronicle desktop app in dev mode
+│   ├── run_tests.sh          # Execute complete test suite
+│   ├── db_manage.sh          # Database administration CLI wrapper
+│   └── README.md             # Scripts documentation
+│
+├── ML/                       # Machine learning datasets, models, and evaluations
+│   ├── src/                  # Dataset loaders, feature engineering, and training scripts
+│   ├── models/               # Serialized models (.joblib) and feature schemas
+│   ├── results/              # Confusion matrices, classification reports, and metrics
+│   └── tests/                # Model reloading and validation tests
+│
+├── ui/                       # Modern desktop web application assets
+│   ├── index.html            # Main dashboard HTML (Overview, Process, Baseline, Alert views)
+│   ├── style.css             # Vanilla CSS design system with light/dark themes
+│   └── app.js                # Frontend reactivity, charts, and API polling
+│
+├── packaging/                # Linux distribution packaging assets
+│   ├── build_deb.sh          # Debian (.deb) package builder
+│   ├── chronicle.desktop     # Linux desktop launcher entry
+│   └── DEBIAN/               # Package control metadata
+│
+└── app.py                    # Main executable entry point (native window / web mode)
+```
+
+---
+
+## Quickstart Guide
+
+### 1. Installation
+
+Clone the repository and install runtime dependencies:
+
+```bash
+git clone https://github.com/Team-ADAPT/Chronicle.git
+cd Chronicle
+
+# Install Python dependencies
+pip install -r requirements.txt
+```
+
+### 2. Run the Desktop Application
+
+Launch Chronicle with the native desktop window (`pywebview`):
+
+```bash
+# Launch via helper script
+./scripts/run_dev.sh
+
+# Or directly with Python
+python3 app.py --window
+```
+
+To run in headless / browser-only mode:
+
+```bash
+python3 app.py --no-window --port 8080
+# Open http://localhost:8080 in your browser
+```
+
+### 3. Run the Test Suites
+
+Execute all pipeline and database tests:
+
+```bash
+./scripts/run_tests.sh
+```
+
+### 4. Database Administration
+
+```bash
+# Check database health & migration status
+./scripts/db_manage.sh status
+
+# Apply schema migrations
+./scripts/db_manage.sh migrate
+
+# Recompute historical behavioural baselines
+./scripts/db_manage.sh profile
 ```
 
 ---
 
 ## Requirements
 
-### Runtime dashboard
+### Runtime Dashboard & Pipeline
+- Python 3.9 or newer (tested on Python 3.10, 3.11, 3.12, 3.13)
+- Linux (Debian, Ubuntu, Linux Mint, etc.), macOS, or Windows for desktop monitoring
+- SQLite is built into Python; PostgreSQL 14+ is optional for enterprise server deployments
 
-- Python 3.9 or newer
-- A modern Linux, macOS, or Windows environment for the browser-based interface
-- No privileged system access is required for the dashboard itself
-
-### Linux eBPF collector
-
-- Linux kernel 5.5 or newer; earlier kernels may work for selected probes
-- Root privileges
-- Python 3 with `psutil`
-- BCC, the Python BCC bindings, and matching kernel headers
-
-Install the Linux dependencies on Ubuntu or Debian:
-
-```bash
-sudo apt update
-sudo apt install -y bpfcc-tools python3-bpfcc linux-headers-$(uname -r) python3-psutil
-```
-
-Install the Python runtime dependencies for the dashboard and ML scripts:
-
-```bash
-python3 -m pip install --upgrade pip
-python3 -m pip install pandas numpy scikit-learn xgboost joblib matplotlib pytest pywebview
-```
-
-> The project does not currently provide a consolidated dependency file. The required packages may vary by operating system and dataset workflow.
+### Linux Kernel eBPF Telemetry
+- Linux kernel 5.5 or newer with BCC support
+- Root / `CAP_BPF` privileges (when unprivileged, Chronicle automatically falls back to `psutil`)
+- Install kernel headers on Ubuntu/Debian:
+  ```bash
+  sudo apt update
+  sudo apt install -y bpfcc-tools python3-bpfcc linux-headers-$(uname -r) python3-psutil
+  ```
 
 ---
 
