@@ -6,6 +6,7 @@ Database, Telemetry, and Baselining Layer.
 __version__ = "0.2.0"
 
 from pathlib import Path
+
 _src_chronicle = Path(__file__).resolve().parent.parent / "src" / "chronicle"
 if _src_chronicle.is_dir() and str(_src_chronicle) not in __path__:
     __path__.append(str(_src_chronicle))

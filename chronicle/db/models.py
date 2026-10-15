@@ -796,7 +796,6 @@ class ProgramHistorySummary:
         }
 
 
-
 @dataclass
 class DetectionRecord:
     detector_name: str
