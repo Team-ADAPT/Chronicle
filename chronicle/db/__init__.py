@@ -13,8 +13,11 @@ from chronicle.db.migrations import discover_migrations, run_migrations
 from chronicle.db.models import (
     BehaviourWindow,
     DetectionRecord,
+    DeviationResult,
     ProcessInstance,
+    ProcessLifecycleSummary,
     ProcessProfile,
+    ProgramHistorySummary,
     SystemMetric,
     TelemetryEvent,
 )
@@ -40,4 +43,7 @@ __all__ = [
     "SystemMetric",
     "ProcessProfile",
     "DetectionRecord",
+    "ProcessLifecycleSummary",
+    "DeviationResult",
+    "ProgramHistorySummary",
 ]

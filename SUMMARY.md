@@ -96,29 +96,24 @@ Chronicle/
 ```
 
 ## Roadmap Progress
+
 ### Completed
-- Local dashboard and native-window launch modes
-- Linux eBPF telemetry collection
-- ADFA-LD and PLAID feature pipelines
-- XGBoost and Isolation Forest models
-- Evaluation reports and model artifacts
-- Debian packaging scaffold
+- **Runtime Desktop & Native-Window:** `pywebview` lightweight WebKit dashboard with Overview, Process, Baseline, and Alert views (`app.py`, `ui/`).
+- **Linux eBPF Telemetry Collection:** Kernel kprobes and tracepoints via BCC C code with zero-crash `psutil` fallback (`eBPF_collector.py`, `src/chronicle/collector.py`).
+- **Dual-Engine Relational Storage:** PostgreSQL and SQLite repository with ACID transactions, automated migrations, and schema versioning (`chronicle/db/`).
+- **Data Retention & Privacy Layer:** Automatic sensitive credential scrubbing (`password`, `token`, `secret`, `api_key`) and configurable retention pruning (`chronicle/db/privacy.py`, `retention.py`).
+- **Robust Historical Behaviour Profiling:** Program-level statistical baselines (Median, NMAD, IQR) separate from individual process instances with maturity handling (`COLD_START`, `LEARNING`, `MATURE`) and anti-poisoning filters (`chronicle/db/profiling.py`).
+- **In-Process Machine Learning:** Embedded XGBoost and Isolation Forest inference engines evaluated on ADFA-LD and PLAID benchmarks (`ML/`, `src/chronicle/ml_detector.py`).
+- **Risk Scoring & Explainability:** Multi-category 0–100 risk scoring with granular evidence reasons (`src/chronicle/risk_engine.py`).
+- **Full Pipeline Integration:** End-to-end integration linking Observer ➔ DBMS ➔ ML ➔ Risk ➔ API ➔ Dashboard (`src/chronicle/pipeline.py`).
+- **Comprehensive Testing:** End-to-end integration and database unit test suites passing 17/17 (`tests/`).
+- **Debian Distribution Packaging:** Standalone `.deb` package builder with `.desktop` menu launcher (`packaging/build_deb.sh`).
+- **Project Structure Alignment:** Phase 1 repository structure fully aligned with `Project.md` (`docs/`, `database/`, `ebpf/`, `research/`, `tests/`, `scripts/`, `LICENSE`).
 
-### In Progress
-- Persistent database storage and event retention
-- Full process-history profiling
-- Risk-scoring integration with telemetry results
-- Explainable alert generation
-- Production-grade security and performance hardening
-- Deployment and distribution improvements
-
-### Planned
-- Complete real-time collector and dashboard integration
-- PostgreSQL-backed storage
-- Advanced behavioural baselining
-- Automated model retraining and validation
-- API or service interfaces for security tooling
-- Formal public license and release process
+### Ongoing & Planned
+- Long-duration host evaluation benchmarking Model A (current behavior only) vs Model B (current + historical behavior).
+- Evaluation of detection overhead and database query latency on high-frequency server workloads.
+- Automated baseline re-calibration for legitimate software upgrades.
 
 ## Contributing Guidelines
 The project follows Conventional Commits format:
@@ -136,7 +131,7 @@ The project follows Conventional Commits format:
 - `chore`: General maintenance
 
 ## License
-No explicit license has been assigned to this repository yet. The project is currently distributed without a stated open-source license.
+Chronicle is licensed under the MIT License. See [LICENSE](file:///Users/tanishkgupta/Projects/Chronicle/LICENSE) for details.
 
 ---
-*Summary generated on 2026-10-09*
+*Summary updated on 2026-10-15*

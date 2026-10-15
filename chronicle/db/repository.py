@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Sequence
 
 from chronicle.db.connection import Database
@@ -16,9 +16,14 @@ from chronicle.db.models import (
     BehaviourWindow,
     DetectionRecord,
     ProcessInstance,
+    ProcessLifecycleSummary,
     ProcessProfile,
+    ProgramHistorySummary,
     SystemMetric,
     TelemetryEvent,
+    safe_float,
+    safe_int,
+    to_iso,
 )
 from chronicle.db.privacy import redact_string, sanitize_dict
 
@@ -170,6 +175,59 @@ class TelemetryRepository:
         with self.db.cursor() as cur:
             cur.execute(sql, (comm, limit))
             return [ProcessInstance.from_row(r) for r in cur.fetchall()]
+
+    def get_processes_by_profile(
+        self,
+        profile_id: str,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        limit: int = 100,
+    ) -> List[ProcessInstance]:
+        """Fetch all process instances belonging to a program profile across multiple executions."""
+        clauses = ["profile_id = %s"]
+        params: List[Any] = [profile_id]
+
+        if start_time:
+            clauses.append("start_time >= %s")
+            params.append(start_time)
+        if end_time:
+            clauses.append("start_time <= %s")
+            params.append(end_time)
+
+        sql = f"""
+            SELECT * FROM process_instances
+            WHERE {' AND '.join(clauses)}
+            ORDER BY start_time ASC
+            LIMIT %s;
+        """
+        params.append(limit)
+
+        with self.db.cursor() as cur:
+            cur.execute(sql, tuple(params))
+            return [ProcessInstance.from_row(r) for r in cur.fetchall()]
+
+    def count_instances_by_profile(self, profile_id: str) -> int:
+        """Count distinct process instances observed for a given program profile."""
+        sql = "SELECT COUNT(*) AS c FROM process_instances WHERE profile_id = %s;"
+        with self.db.cursor() as cur:
+            cur.execute(sql, (profile_id,))
+            row = cur.fetchone()
+            return row["c"] if isinstance(row, dict) else row[0]
+
+    def get_distinct_profile_ids(self) -> List[str]:
+        """Return all unique program profile_ids present in persisted telemetry."""
+        sql = """
+            SELECT DISTINCT profile_id FROM process_instances
+            WHERE profile_id IS NOT NULL AND profile_id != ''
+            UNION
+            SELECT DISTINCT profile_id FROM behaviour_windows
+            WHERE profile_id IS NOT NULL AND profile_id != ''
+            ORDER BY profile_id;
+        """
+        with self.db.cursor() as cur:
+            cur.execute(sql)
+            rows = cur.fetchall()
+            return [r["profile_id"] if isinstance(r, dict) else r[0] for r in rows]
 
     # -------------------------------------------------------------------------
     # Telemetry Events
@@ -491,6 +549,76 @@ class TelemetryRepository:
             cur.execute(sql, (limit,))
             return [BehaviourWindow.from_row(r) for r in cur.fetchall()]
 
+    def get_windows_by_profile_range(
+        self,
+        profile_id: str,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        clean_only: bool = False,
+        limit: int = 5000,
+    ) -> List[BehaviourWindow]:
+        """
+        Fetch historical behaviour windows for a profile, supporting temporal boundaries
+        and anti-poisoning filtering (clean_only=True excludes known anomalies/attacks).
+        """
+        clauses = ["profile_id = %s"]
+        params: List[Any] = [profile_id]
+
+        if start_time:
+            clauses.append("start_time >= %s")
+            params.append(start_time)
+        if end_time:
+            clauses.append("end_time <= %s")
+            params.append(end_time)
+        if clean_only:
+            # Exclude explicit attack labels and known anomalies to avoid poisoning the baseline
+            clauses.append("(label_binary IS NULL OR label_binary = 0)")
+            clauses.append("(label IS NULL OR label NOT IN ('malicious', 'attack'))")
+
+        sql = f"""
+            SELECT * FROM behaviour_windows
+            WHERE {' AND '.join(clauses)}
+            ORDER BY start_time ASC
+            LIMIT %s;
+        """
+        params.append(limit)
+
+        with self.db.cursor() as cur:
+            cur.execute(sql, tuple(params))
+            return [BehaviourWindow.from_row(r) for r in cur.fetchall()]
+
+    def get_instance_windows_metrics(self, instance_id: str) -> Dict[str, Any]:
+        """Aggregate behaviour window metrics for a single process instance across its lifetime."""
+        sql = """
+            SELECT
+                COUNT(*) AS total_windows,
+                COALESCE(SUM(duration_s), 0.0) AS total_duration_s,
+                COALESCE(SUM(syscall_count), 0) AS total_syscalls,
+                COALESCE(MAX(cpu_usage), 0.0) AS peak_cpu,
+                COALESCE(AVG(cpu_usage), 0.0) AS avg_cpu,
+                COALESCE(MAX(memory_usage), 0.0) AS peak_memory,
+                COALESCE(MAX(memory_rss_bytes), 0) AS peak_memory_rss,
+                COALESCE(SUM(bytes_read), 0) AS total_bytes_read,
+                COALESCE(SUM(bytes_written), 0) AS total_bytes_written,
+                COALESCE(SUM(tcp_tx_bytes + udp_tx_bytes), 0) AS total_net_tx,
+                COALESCE(SUM(tcp_rx_bytes), 0) AS total_net_rx,
+                COALESCE(SUM(child_process_count), 0) AS total_children,
+                COALESCE(SUM(exec_count), 0) AS total_execs,
+                COALESCE(SUM(syscalls_sensitive), 0) AS total_sensitive_syscalls,
+                COALESCE(MAX(unique_files), 0) AS max_unique_files,
+                COALESCE(MAX(unique_dest_ips), 0) AS max_unique_ips,
+                COALESCE(MIN(start_time), CURRENT_TIMESTAMP) AS first_window_start,
+                COALESCE(MAX(end_time), CURRENT_TIMESTAMP) AS last_window_end
+            FROM behaviour_windows
+            WHERE instance_id = %s;
+        """
+        with self.db.cursor() as cur:
+            cur.execute(sql, (instance_id,))
+            row = cur.fetchone()
+            if not row:
+                return {}
+            return dict(row)
+
     # -------------------------------------------------------------------------
     # System Metrics
     # -------------------------------------------------------------------------
@@ -647,6 +775,182 @@ class TelemetryRepository:
         with self.db.cursor() as cur:
             cur.execute(sql, (limit,))
             return [ProcessProfile.from_row(r) for r in cur.fetchall()]
+
+    def delete_profile(self, profile_id: str, version: Optional[int] = None) -> bool:
+        """Delete a profile record by profile_id and optional version."""
+        if version is not None:
+            sql = "DELETE FROM process_profiles WHERE profile_id = %s AND profile_version = %s;"
+            params = (profile_id, version)
+        else:
+            sql = "DELETE FROM process_profiles WHERE profile_id = %s;"
+            params = (profile_id,)
+
+        with self.db.cursor() as cur:
+            cur.execute(sql, params)
+            return cur.rowcount > 0
+
+    def get_process_lifecycle_summary(self, instance_id: str) -> Optional[ProcessLifecycleSummary]:
+        """
+        Generate a complete historical profile and lifecycle summary of a process instance
+        across its observation windows, events, and any triggered detections.
+        """
+        proc = self.get_process(instance_id)
+        if not proc:
+            return None
+
+        win_metrics = self.get_instance_windows_metrics(instance_id)
+
+        # Count events for this instance
+        sql_events = "SELECT COUNT(*) AS c FROM telemetry_events WHERE instance_id = %s;"
+        with self.db.cursor() as cur:
+            cur.execute(sql_events, (instance_id,))
+            r = cur.fetchone()
+            total_events = r["c"] if isinstance(r, dict) else r[0]
+
+        # Fetch detections for this instance
+        detections = self.get_detections_by_instance(instance_id)
+        detections_count = len(detections)
+        max_risk = max((d.risk_score or 0.0 for d in detections), default=0.0)
+
+        # Determine lifecycle status and duration
+        if proc.end_time is not None:
+            duration_s = max(0.0, (proc.end_time - proc.start_time).total_seconds())
+            if proc.exit_code is not None and proc.exit_code != 0:
+                status = "CRASHED"
+            else:
+                status = "TERMINATED"
+        else:
+            now = datetime.now(timezone.utc)
+            duration_s = max(0.0, (now - proc.start_time).total_seconds())
+            status = "RUNNING"
+
+        return ProcessLifecycleSummary(
+            instance_id=proc.instance_id,
+            profile_id=proc.profile_id,
+            comm=proc.comm,
+            pid=proc.pid,
+            ppid=proc.ppid,
+            parent_instance_id=proc.parent_instance_id,
+            executable=proc.executable,
+            executable_hash=proc.executable_hash,
+            uid=proc.uid,
+            start_time=proc.start_time,
+            end_time=proc.end_time,
+            exit_code=proc.exit_code,
+            duration_s=duration_s,
+            status=status,
+            preexisting=proc.preexisting,
+            total_windows=safe_int(win_metrics.get("total_windows", 0)),
+            total_events=total_events,
+            total_syscalls=safe_int(win_metrics.get("total_syscalls", 0)),
+            peak_cpu_usage=safe_float(win_metrics.get("peak_cpu", 0.0)),
+            avg_cpu_usage=safe_float(win_metrics.get("avg_cpu", 0.0)),
+            peak_memory_usage=safe_float(win_metrics.get("peak_memory", 0.0)),
+            peak_memory_rss_bytes=safe_int(win_metrics.get("peak_memory_rss", 0)),
+            total_bytes_read=safe_int(win_metrics.get("total_bytes_read", 0)),
+            total_bytes_written=safe_int(win_metrics.get("total_bytes_written", 0)),
+            total_net_tx_bytes=safe_int(win_metrics.get("total_net_tx", 0)),
+            total_net_rx_bytes=safe_int(win_metrics.get("total_net_rx", 0)),
+            total_child_processes=safe_int(win_metrics.get("total_children", 0)),
+            total_exec_count=safe_int(win_metrics.get("total_execs", 0)),
+            total_sensitive_syscalls=safe_int(win_metrics.get("total_sensitive_syscalls", 0)),
+            distinct_files_count=safe_int(win_metrics.get("max_unique_files", 0)),
+            distinct_ips_count=safe_int(win_metrics.get("max_unique_ips", 0)),
+            detections_count=detections_count,
+            max_risk_score=max_risk,
+            metadata=proc.metadata,
+        )
+
+    def get_program_history_summary(
+        self,
+        profile_id: str,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+    ) -> Optional[ProgramHistorySummary]:
+        """
+        Aggregate cross-instance history for a program profile across multiple executions.
+        Distinguishes individual process instances while summarizing program-level behaviour.
+        """
+        instances = self.get_processes_by_profile(profile_id, start_time=start_time, end_time=end_time, limit=500)
+        windows = self.get_windows_by_profile(profile_id, start_time=start_time, end_time=end_time, limit=5000)
+
+        if not instances and not windows:
+            return None
+
+        comm = instances[0].comm if instances else (windows[0].comm or "unknown")
+        exe = instances[0].executable if instances else windows[0].executable
+
+        total_inst = len(instances)
+        active_inst = sum(1 for i in instances if i.end_time is None)
+        term_inst = sum(1 for i in instances if i.end_time is not None)
+        total_windows = len(windows)
+
+        # Count total events and detections across instances
+        inst_ids = [i.instance_id for i in instances]
+        total_events = 0
+        detections_count = 0
+        if inst_ids:
+            with self.db.cursor() as cur:
+                placeholders = ",".join(["%s"] * len(inst_ids))
+                cur.execute(
+                    f"SELECT COUNT(*) AS c FROM telemetry_events WHERE instance_id IN ({placeholders});",
+                    inst_ids,
+                )
+                r = cur.fetchone()
+                total_events = r["c"] if isinstance(r, dict) else r[0]
+
+                cur.execute(
+                    f"SELECT COUNT(*) AS c FROM detections WHERE instance_id IN ({placeholders});",
+                    inst_ids,
+                )
+                r = cur.fetchone()
+                detections_count = r["c"] if isinstance(r, dict) else r[0]
+
+        start_dates = [i.start_time for i in instances if i.start_time]
+        end_dates = [i.end_time for i in instances if i.end_time]
+        if windows:
+            start_dates.extend([w.start_time for w in windows if w.start_time])
+            end_dates.extend([w.end_time for w in windows if w.end_time])
+
+        first_seen = min(start_dates) if start_dates else None
+        last_seen = max(end_dates) if end_dates else None
+
+        # Fetch latest profile if available
+        prof = self.get_profile(profile_id)
+        maturity = prof.maturity if prof else ("COLD_START" if total_windows < 5 else "LEARNING")
+        confidence = prof.confidence if prof else 0.0
+        baseline_stats = prof.baseline_stats if prof else {}
+
+        # Build timeline of executions
+        timeline = [
+            {
+                "instance_id": i.instance_id,
+                "pid": i.pid,
+                "start_time": to_iso(i.start_time),
+                "end_time": to_iso(i.end_time),
+                "exit_code": i.exit_code,
+                "windows_written": i.windows_written,
+            }
+            for i in instances[:50]
+        ]
+
+        return ProgramHistorySummary(
+            profile_id=profile_id,
+            comm=comm,
+            executable=exe,
+            total_instances=total_inst,
+            active_instances=active_inst,
+            terminated_instances=term_inst,
+            total_windows=total_windows,
+            total_events=total_events,
+            first_seen=first_seen,
+            last_seen=last_seen,
+            maturity=maturity,
+            confidence=confidence,
+            baseline_stats=baseline_stats,
+            detections_count=detections_count,
+            instances_timeline=timeline,
+        )
 
     # -------------------------------------------------------------------------
     # Detections

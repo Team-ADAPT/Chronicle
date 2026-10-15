@@ -57,7 +57,7 @@ def sanitize_dict(data: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     for k, v in data.items():
         # Check key name
         key_lower = str(k).lower()
-        if any(sens in key_lower for sens in ("password", "passwd", "secret", "private_key", "token", "auth")):
+        if any(sens in key_lower for sens in ("password", "passwd", "secret", "private_key", "token", "auth", "api_key", "apikey", "credential")):
             sanitized[k] = "[REDACTED_CREDENTIAL]"
         elif isinstance(v, str):
             sanitized[k] = redact_string(v)

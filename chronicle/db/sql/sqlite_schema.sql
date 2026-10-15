@@ -230,3 +230,8 @@ CREATE INDEX IF NOT EXISTS idx_detections_time ON detections(timestamp);
 CREATE INDEX IF NOT EXISTS idx_detections_instance ON detections(instance_id);
 CREATE INDEX IF NOT EXISTS idx_detections_detector ON detections(detector_name);
 CREATE INDEX IF NOT EXISTS idx_detections_risk ON detections(risk_score);
+CREATE INDEX IF NOT EXISTS idx_win_profile_label ON behaviour_windows(profile_id, label);
+CREATE INDEX IF NOT EXISTS idx_win_instance_index ON behaviour_windows(instance_id, window_index);
+CREATE INDEX IF NOT EXISTS idx_proc_profile_start ON process_instances(profile_id, start_time);
+CREATE INDEX IF NOT EXISTS idx_proc_comm_start ON process_instances(comm, start_time);
+CREATE INDEX IF NOT EXISTS idx_detections_inst_time ON detections(instance_id, timestamp);

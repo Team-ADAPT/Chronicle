@@ -18,6 +18,7 @@ from chronicle.db.models import (
     SystemMetric,
     TelemetryEvent,
 )
+from chronicle.db.profiling import ProfileManager
 from chronicle.db.repository import TelemetryRepository
 
 logger = logging.getLogger("chronicle.db.ingest")
@@ -27,8 +28,13 @@ def ingest_experiment(
     run_dir: Union[str, Path],
     repository: Optional[TelemetryRepository] = None,
     batch_size: int = 1000,
+    auto_profile: bool = False,
+    min_observations: int = 5,
 ) -> Dict[str, int]:
-    """Import an eBPF collector experiment directory into PostgreSQL."""
+    """
+    Import an eBPF collector experiment directory into PostgreSQL/SQLite.
+    Optionally recomputes behavioural baselines for all ingested program profiles.
+    """
     directory = Path(run_dir)
     if not directory.is_dir():
         raise FileNotFoundError(f"Experiment directory not found: {directory}")
@@ -39,6 +45,7 @@ def ingest_experiment(
         "telemetry_events": 0,
         "behaviour_windows": 0,
         "system_metrics": 0,
+        "profiles_updated": 0,
     }
 
     # 1. Process Instances (must precede events and windows for foreign-key resolution)
@@ -109,6 +116,18 @@ def ingest_experiment(
             repo.insert_system_metrics_batch(metrics)
             results["system_metrics"] += len(metrics)
 
+    # 5. Optional Auto-Profiling: Recompute or update baselines for ingested program profiles
+    if auto_profile:
+        pm = ProfileManager(repo)
+        profile_ids = repo.get_distinct_profile_ids()
+        updated_count = 0
+        for pid in profile_ids:
+            prof = pm.recompute_profile(pid, min_observations=min_observations)
+            if prof:
+                updated_count += 1
+        results["profiles_updated"] = updated_count
+        logger.info("Auto-profiling complete: updated %d program baselines", updated_count)
+
     logger.info("Ingestion complete for %s: %s", directory.name, results)
     return results
 
@@ -120,11 +139,18 @@ def main():
     parser = argparse.ArgumentParser(description="Ingest Chronicle collector datasets into PostgreSQL")
     parser.add_argument("path", help="Path to experiment directory (contains process_instances.csv, etc.)")
     parser.add_argument("--batch-size", type=int, default=1000, help="Batch insertion size")
+    parser.add_argument("--auto-profile", action="store_true", help="Automatically compute baselines for ingested programs")
+    parser.add_argument("--min-obs", type=int, default=5, help="Minimum observations required for baseline maturity")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     try:
-        counts = ingest_experiment(args.path, batch_size=args.batch_size)
+        counts = ingest_experiment(
+            args.path,
+            batch_size=args.batch_size,
+            auto_profile=args.auto_profile,
+            min_observations=args.min_obs,
+        )
         print("Dataset ingested successfully:")
         for k, v in counts.items():
             print(f"  • {k}: {v} records")

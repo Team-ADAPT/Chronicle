@@ -14,6 +14,9 @@ echo "=================================================="
 rm -rf "${PKG_DIR}" "${PKG_DIR}.deb"
 mkdir -p "${PKG_DIR}/DEBIAN"
 mkdir -p "${PKG_DIR}/opt/chronicle/ui"
+mkdir -p "${PKG_DIR}/opt/chronicle/src/chronicle/db"
+mkdir -p "${PKG_DIR}/opt/chronicle/ML/models"
+mkdir -p "${PKG_DIR}/opt/chronicle/data"
 mkdir -p "${PKG_DIR}/usr/share/applications"
 mkdir -p "${PKG_DIR}/usr/share/icons/hicolor/256x256/apps"
 mkdir -p "${PKG_DIR}/usr/local/bin"
@@ -23,13 +26,20 @@ cp packaging/DEBIAN/control "${PKG_DIR}/DEBIAN/"
 
 # 3. Copy application files into /opt/chronicle
 cp app.py "${PKG_DIR}/opt/chronicle/"
+cp requirements.txt "${PKG_DIR}/opt/chronicle/"
 cp -r ui/* "${PKG_DIR}/opt/chronicle/ui/"
+cp -r src/* "${PKG_DIR}/opt/chronicle/src/"
+cp -r chronicle/db/* "${PKG_DIR}/opt/chronicle/src/chronicle/db/"
+if [ -d "ML/models" ]; then
+    cp -r ML/models/* "${PKG_DIR}/opt/chronicle/ML/models/"
+fi
 
-# If pyinstaller binary exists, include compiled binary; otherwise create launcher script
+# Launcher script
 cat << 'EOF' > "${PKG_DIR}/opt/chronicle/chronicle"
 #!/usr/bin/env bash
 # Chronicle App Launcher
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export PYTHONPATH="${DIR}/src:${PYTHONPATH}"
 if command -v python3 >/dev/null 2>&1; then
     exec python3 "${DIR}/app.py" "$@"
 else

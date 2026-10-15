@@ -39,6 +39,13 @@ def main():
     ingest_parser = subparsers.add_parser("ingest", help="Ingest eBPF collector dataset folder")
     ingest_parser.add_argument("path", help="Path to experiment run directory")
     ingest_parser.add_argument("--batch-size", type=int, default=1000, help="Batch insertion size")
+    ingest_parser.add_argument("--auto-profile", action="store_true", help="Automatically compute baselines after ingestion")
+    ingest_parser.add_argument("--min-obs", type=int, default=5, help="Minimum observations required for baseline maturity")
+
+    # profile
+    prof_parser = subparsers.add_parser("profile", help="Compute or recompute behavioural baselines for programs")
+    prof_parser.add_argument("--profile-id", default=None, help="Specific program profile_id to compute (default: all)")
+    prof_parser.add_argument("--min-obs", type=int, default=5, help="Minimum observations required for baseline maturity")
 
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -96,11 +103,43 @@ def main():
         run_migrations(db)
         from chronicle.db.repository import TelemetryRepository
         repo = TelemetryRepository(db)
-        counts = ingest_experiment(args.path, repository=repo, batch_size=args.batch_size)
+        counts = ingest_experiment(
+            args.path,
+            repository=repo,
+            batch_size=args.batch_size,
+            auto_profile=args.auto_profile,
+            min_observations=args.min_obs,
+        )
         print(f"Ingestion complete ({db.engine.upper()}):")
         for k, v in counts.items():
             print(f"  • {k}: {v} records")
 
+    elif args.command == "profile":
+        db = Database(cfg)
+        run_migrations(db)
+        from chronicle.db.profiling import ProfileManager
+        from chronicle.db.repository import TelemetryRepository
+        repo = TelemetryRepository(db)
+        pm = ProfileManager(repo)
+
+        if args.profile_id:
+            prof = pm.recompute_profile(args.profile_id, min_observations=args.min_obs)
+            if prof:
+                print(f"Profile {prof.profile_id} ({prof.comm}):")
+                print(f"  • Maturity:      {prof.maturity}")
+                print(f"  • Confidence:    {prof.confidence:.2f}")
+                print(f"  • Observations:  {prof.observations_count}")
+                print(f"  • Instances:     {prof.instances_count}")
+            else:
+                print(f"Insufficient history for profile '{args.profile_id}' (minimum {args.min_obs} required).")
+        else:
+            results = pm.recompute_all_profiles(min_observations=args.min_obs)
+            print(f"Chronicle Program Baselining ({db.engine.upper()}):")
+            for pid, prof in results.items():
+                if prof:
+                    print(f"  • {pid} ({prof.comm}): {prof.maturity} (conf: {prof.confidence:.2f}, n={prof.observations_count})")
+                else:
+                    print(f"  • {pid}: Insufficient history")
 
 if __name__ == "__main__":
     main()

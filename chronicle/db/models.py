@@ -613,6 +613,188 @@ class ProcessProfile:
             updated_at=parse_datetime(row.get("updated_at")),
         )
 
+    @property
+    def maturity(self) -> str:
+        """Return maturity level: 'COLD_START', 'LEARNING', or 'MATURE'."""
+        return self.baseline_stats.get("maturity", "COLD_START" if self.observations_count < 5 else "MATURE")
+
+    @property
+    def confidence(self) -> float:
+        """Return confidence score in [0.0, 1.0]."""
+        return float(self.baseline_stats.get("confidence", 0.0))
+
+    @property
+    def instances_count(self) -> int:
+        """Return number of distinct process instances contributing to this baseline."""
+        return int(self.baseline_stats.get("instances_count", 1 if self.observations_count > 0 else 0))
+
+    def get_feature_stats(self, feature_name: str) -> Optional[Dict[str, Any]]:
+        """Return statistical metrics for a specific behavioural feature."""
+        features = self.baseline_stats.get("features", {})
+        return features.get(feature_name)
+
+
+@dataclass
+class ProcessLifecycleSummary:
+    """Historical summary of a single process execution lifecycle across all its windows and events."""
+    instance_id: str
+    profile_id: str
+    comm: str
+    pid: int
+    start_time: datetime
+    duration_s: float
+    status: str  # "RUNNING", "TERMINATED", "CRASHED"
+    total_windows: int = 0
+    total_events: int = 0
+    ppid: Optional[int] = None
+    parent_instance_id: Optional[str] = None
+    executable: Optional[str] = None
+    executable_hash: Optional[str] = None
+    uid: Optional[int] = None
+    end_time: Optional[datetime] = None
+    exit_code: Optional[int] = None
+    preexisting: bool = False
+
+    # Aggregated metrics over lifecycle
+    total_syscalls: int = 0
+    peak_cpu_usage: float = 0.0
+    avg_cpu_usage: float = 0.0
+    peak_memory_usage: float = 0.0
+    peak_memory_rss_bytes: int = 0
+    total_bytes_read: int = 0
+    total_bytes_written: int = 0
+    total_net_tx_bytes: int = 0
+    total_net_rx_bytes: int = 0
+    total_child_processes: int = 0
+    total_exec_count: int = 0
+    total_sensitive_syscalls: int = 0
+    distinct_files_count: int = 0
+    distinct_ips_count: int = 0
+    detections_count: int = 0
+    max_risk_score: float = 0.0
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "instance_id": self.instance_id,
+            "profile_id": self.profile_id,
+            "comm": self.comm,
+            "pid": self.pid,
+            "ppid": self.ppid,
+            "parent_instance_id": self.parent_instance_id,
+            "executable": self.executable,
+            "executable_hash": self.executable_hash,
+            "uid": self.uid,
+            "start_time": to_iso(self.start_time),
+            "end_time": to_iso(self.end_time),
+            "exit_code": self.exit_code,
+            "duration_s": round(self.duration_s, 2),
+            "status": self.status,
+            "preexisting": self.preexisting,
+            "total_windows": self.total_windows,
+            "total_events": self.total_events,
+            "total_syscalls": self.total_syscalls,
+            "peak_cpu_usage": round(self.peak_cpu_usage, 2),
+            "avg_cpu_usage": round(self.avg_cpu_usage, 2),
+            "peak_memory_usage": round(self.peak_memory_usage, 2),
+            "peak_memory_rss_bytes": self.peak_memory_rss_bytes,
+            "total_bytes_read": self.total_bytes_read,
+            "total_bytes_written": self.total_bytes_written,
+            "total_net_tx_bytes": self.total_net_tx_bytes,
+            "total_net_rx_bytes": self.total_net_rx_bytes,
+            "total_child_processes": self.total_child_processes,
+            "total_exec_count": self.total_exec_count,
+            "total_sensitive_syscalls": self.total_sensitive_syscalls,
+            "distinct_files_count": self.distinct_files_count,
+            "distinct_ips_count": self.distinct_ips_count,
+            "detections_count": self.detections_count,
+            "max_risk_score": round(self.max_risk_score, 1),
+            "metadata": self.metadata,
+        }
+
+
+@dataclass
+class DeviationResult:
+    """Structured, explainable deviation evaluation of a window against baseline."""
+    is_anomaly: bool
+    risk_score: float
+    confidence: float
+    maturity: str
+    reasons: List[str]
+    z_scores: Dict[str, float]
+    robust_deviations: Dict[str, Dict[str, Any]]
+    risk_contributions: Dict[str, float]
+    unprecedented_events: List[str]
+    profile_observations: int
+    instances_in_baseline: int = 1
+    details: Dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "is_anomaly": self.is_anomaly,
+            "risk_score": round(self.risk_score, 1),
+            "confidence": round(self.confidence, 2),
+            "maturity": self.maturity,
+            "reasons": self.reasons,
+            "z_scores": self.z_scores,
+            "robust_deviations": self.robust_deviations,
+            "risk_contributions": self.risk_contributions,
+            "unprecedented_events": self.unprecedented_events,
+            "profile_observations": self.profile_observations,
+            "instances_in_baseline": self.instances_in_baseline,
+            "details": self.details,
+            # Top-level z convenience for compatibility with RiskEngine
+            "cpu_z": self.z_scores.get("cpu", 0.0),
+            "mem_z": self.z_scores.get("memory", 0.0),
+            "syscalls_z": self.z_scores.get("syscalls", 0.0),
+            "max_z": max(self.z_scores.values()) if self.z_scores else 0.0,
+        }
+
+    def __getitem__(self, key: str) -> Any:
+        return self.to_dict()[key]
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self.to_dict().get(key, default)
+
+
+@dataclass
+class ProgramHistorySummary:
+    """Historical cross-instance summary of a program across multiple executions."""
+    profile_id: str
+    comm: str
+    executable: Optional[str] = None
+    total_instances: int = 0
+    active_instances: int = 0
+    terminated_instances: int = 0
+    total_windows: int = 0
+    total_events: int = 0
+    first_seen: Optional[datetime] = None
+    last_seen: Optional[datetime] = None
+    maturity: str = "COLD_START"
+    confidence: float = 0.0
+    baseline_stats: Dict[str, Any] = field(default_factory=dict)
+    detections_count: int = 0
+    instances_timeline: List[Dict[str, Any]] = field(default_factory=list)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "profile_id": self.profile_id,
+            "comm": self.comm,
+            "executable": self.executable,
+            "total_instances": self.total_instances,
+            "active_instances": self.active_instances,
+            "terminated_instances": self.terminated_instances,
+            "total_windows": self.total_windows,
+            "total_events": self.total_events,
+            "first_seen": to_iso(self.first_seen),
+            "last_seen": to_iso(self.last_seen),
+            "maturity": self.maturity,
+            "confidence": round(self.confidence, 2),
+            "baseline_stats": self.baseline_stats,
+            "detections_count": self.detections_count,
+            "instances_timeline": self.instances_timeline,
+        }
+
 
 @dataclass
 class DetectionRecord:
