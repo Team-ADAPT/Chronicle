@@ -1,0 +1,30 @@
+# ============================================================================
+# Chronicle — Python Dependencies
+# PBL Project: Team ID: OSDBMS-V-2026-T-005
+# Academic Session 2026–27
+# ============================================================================
+
+# --- Core Runtime & Desktop Interface ---
+psutil>=5.9.0
+pywebview>=4.4.0
+
+# --- Data Processing & Machine Learning (Embedded In-Process) ---
+numpy>=1.26.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+xgboost>=2.0.0
+joblib>=1.3.0
+matplotlib>=3.8.0
+seaborn>=0.13.0
+
+# --- Storage & DBMS Layer ---
+# PostgreSQL driver (psycopg v3); SQLite is built into standard Python
+psycopg[binary]>=3.1.0
+
+# --- Testing & Verification ---
+pytest>=8.0.0
+
+# --- Linux Kernel eBPF Notes ---
+# Linux eBPF/BCC monitoring requires host kernel headers and system tools:
+#   sudo apt update
+#   sudo apt install -y bpfcc-tools python3-bpfcc linux-headers-$(uname -r)
