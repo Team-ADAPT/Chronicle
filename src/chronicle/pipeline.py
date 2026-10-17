@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional
 from chronicle.config import ChronicleConfig
 from chronicle.collector import TelemetryCollector
 from chronicle.ml_detector import MLDetectionEngine
-from chronicle.risk_engine import RiskEngine
+from chronicle.risk_engine import RiskEngine, ScoringResult
 from chronicle.storage import ChronicleDatabase, ProcessProfile
 
 logger = logging.getLogger("chronicle.pipeline")
@@ -46,6 +46,8 @@ class ChroniclePipeline:
         # Telemetry statistics counters
         self.total_events_processed = 0
         self.total_anomalies_detected = 0
+        self.total_invalid_events = 0
+        self.total_scoring_failures = 0
 
     def _seed_baseline_profiles(self) -> None:
         """Establish baseline profiles from initial live host process inspection."""
@@ -62,11 +64,45 @@ class ChroniclePipeline:
     def process_raw_event(self, ev: Dict[str, Any]) -> Dict[str, Any]:
         """
         Processes a single raw telemetry event through:
-        1. Historical profile deviation analysis (Z-score)
-        2. ML anomaly & attack inference (Isolation Forest + XGBoost)
-        3. Risk scoring and explainability generation
-        4. Storage & alert generation
+        1. Input validation (invalid events are counted, not discarded)
+        2. Historical profile deviation analysis (Z-score)
+        3. ML anomaly & attack inference (Isolation Forest + XGBoost)
+        4. Risk scoring and explainability generation (gated by feature flag)
+        5. Storage & alert generation
+
+        Per-event exceptions are caught so that one malformed event cannot
+        halt processing of subsequent valid events.
         """
+        try:
+            return self._process_event_inner(ev)
+        except Exception as exc:
+            logger.warning("Unhandled error processing event %s: %s", ev.get("id"), exc)
+            with self._lock:
+                self.total_invalid_events += 1
+            # Return a minimal safe record so callers don't crash
+            return {
+                "id": ev.get("id", "unknown"),
+                "timestamp": ev.get("timestamp", ""),
+                "pid": ev.get("pid", 0),
+                "ppid": ev.get("ppid", 1),
+                "comm": ev.get("comm", "unknown"),
+                "user": ev.get("user", "system"),
+                "eventType": ev.get("eventType", "sys_sample"),
+                "cpu": 0.0,
+                "mem": 0.0,
+                "syscalls": 0,
+                "riskScore": 0,
+                "status": "SAFE",
+                "anomalyDetails": f"Event processing failed: {exc}",
+                "deviation": "N/A",
+                "mlScore": 0.0,
+                "xgbAttackProb": 0.0,
+                "terminated": False,
+                "eval_status": "scoring_error",
+            }
+
+    def _process_event_inner(self, ev: Dict[str, Any]) -> Dict[str, Any]:
+        """Inner implementation of process_raw_event."""
         comm = ev.get("comm") or "unknown"
         pid = ev.get("pid", 0)
         user = ev.get("user", "system")
@@ -75,6 +111,8 @@ class ChroniclePipeline:
         syscalls = ev.get("syscalls", 0)
         seq = ev.get("syscall_sequence", ["read", "write"])
         heuristics = ev.get("heuristic_flags", [])
+        event_ts = ev.get("timestamp")
+        ppid = ev.get("ppid", 1)
 
         # 1. Historical Baseline Comparison
         with self._lock:
@@ -84,9 +122,12 @@ class ChroniclePipeline:
 
         # 2. Machine Learning Anomaly Detection
         ml_result = self.ml_engine.predict_sequence(seq)
+        if ml_result.get("error"):
+            with self._lock:
+                self.total_scoring_failures += 1
 
-        # 3. Contextual Risk & Explainability Evaluation
-        eval_res = RiskEngine.evaluate(
+        # 3. Contextual Risk & Explainability Evaluation (feature-flag gated)
+        scoring_result: ScoringResult = RiskEngine.evaluate(
             comm=comm,
             pid=pid,
             user=user,
@@ -94,17 +135,24 @@ class ChroniclePipeline:
             deviations=deviations,
             ml_result=ml_result,
             heuristic_flags=heuristics,
+            event_timestamp=event_ts,
+            ppid=ppid,
+            enabled=self.config.enable_risk_scoring,
         )
 
-        risk_score = eval_res["risk_score"]
-        status = eval_res["status"]
+        if scoring_result.eval_status == "scoring_error":
+            with self._lock:
+                self.total_scoring_failures += 1
 
-        # Enriched event record
+        risk_score = scoring_result.risk_score
+        status = scoring_result.status
+
+        # Enriched event record (backward-compatible fields + new eval fields)
         enriched = {
             "id": ev["id"],
-            "timestamp": ev["timestamp"],
+            "timestamp": event_ts,
             "pid": pid,
-            "ppid": ev.get("ppid", 1),
+            "ppid": ppid,
             "comm": comm,
             "user": user,
             "eventType": ev.get("eventType", "sys_sample"),
@@ -112,11 +160,14 @@ class ChroniclePipeline:
             "mem": mem,
             "syscalls": syscalls,
             "riskScore": risk_score,
+            "riskCategory": scoring_result.risk_category,
             "status": status,
-            "anomalyDetails": eval_res["anomaly_details"],
+            "eval_status": scoring_result.eval_status,
+            "anomalyDetails": scoring_result.anomaly_details,
             "deviation": f"Max Z: {deviations.get('max_z', 0.0)}σ",
             "mlScore": ml_result.get("if_score", 0.0),
             "xgbAttackProb": ml_result.get("xgb_prob", 0.0),
+            "detection_source": scoring_result.detection_source,
             "terminated": False,
         }
 
@@ -124,16 +175,25 @@ class ChroniclePipeline:
             self.recent_events.appendleft(enriched)
             self.total_events_processed += 1
 
-            # 4. Alert Generation
-            if status in ("SUSPICIOUS", "ANOMALOUS") or risk_score >= 40:
+            # 4. Alert Generation (only for scored, non-disabled events)
+            if (
+                self.config.enable_risk_scoring
+                and scoring_result.eval_status == "evaluated"
+                and (status in ("SUSPICIOUS", "ANOMALOUS") or risk_score >= 40)
+            ):
                 self.total_anomalies_detected += 1
                 alert = RiskEngine.create_alert(
                     comm=comm,
                     pid=pid,
                     risk_score=risk_score,
-                    category=eval_res["category"],
-                    reasons=eval_res["reasons"],
+                    category=scoring_result.category,
+                    reasons=scoring_result.reasons,
                     description=ev.get("description", ""),
+                    scoring_result=scoring_result,
+                    event_id=ev.get("id"),
+                    event_timestamp=event_ts,
+                    ppid=ppid,
+                    user=user,
                 )
                 self.active_alerts.appendleft(alert)
                 try:
@@ -251,11 +311,14 @@ class ChroniclePipeline:
             total_active_alerts = sum(1 for a in self.active_alerts if a["status"] == "ACTIVE")
             active_anomalies = sum(1 for e in self.recent_events if e["status"] == "ANOMALOUS")
             active_suspicious = sum(1 for e in self.recent_events if e["status"] == "SUSPICIOUS")
-        
+
         sys_metrics["normalcy_percent"] = normalcy
         sys_metrics["active_alerts_count"] = total_active_alerts
         sys_metrics["anomalous_processes_count"] = active_anomalies
         sys_metrics["suspicious_processes_count"] = active_suspicious
         sys_metrics["ebpf_active"] = self.collector.ebpf_enabled
         sys_metrics["ml_models_loaded"] = self.ml_engine.loaded
+        sys_metrics["risk_scoring_enabled"] = self.config.enable_risk_scoring
+        sys_metrics["total_invalid_events"] = self.total_invalid_events
+        sys_metrics["total_scoring_failures"] = self.total_scoring_failures
         return sys_metrics

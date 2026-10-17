@@ -70,6 +70,8 @@ ML/results/*.jpeg
 ml/outputs/
 ml/runs/
 ml/checkpoints/
+ML/models/candidates/
+ML/models/archive/
 
 # Research outputs
 research/results/*

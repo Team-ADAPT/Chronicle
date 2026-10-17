@@ -138,8 +138,9 @@ def test_risk_engine():
         deviations={"cpu_z": 0.2, "mem_z": 0.1, "syscalls_z": 0.3, "max_z": 0.3},
         ml_result={"ml_available": True, "if_pred": 1, "if_score": 0.05, "xgb_attack": False},
     )
-    assert res_safe["risk_score"] < 40
-    assert res_safe["status"] == "SAFE"
+    assert res_safe.risk_score < 40
+    assert res_safe.status == "SAFE"
+    assert res_safe.eval_status == "evaluated"
 
     # 2. Attack scenario with heuristics and high Z-score
     res_attack = RiskEngine.evaluate(
@@ -151,10 +152,13 @@ def test_risk_engine():
         ml_result={"ml_available": True, "if_pred": -1, "if_score": -0.15, "xgb_attack": True, "xgb_prob": 0.99},
         heuristic_flags=["interactive_shell_from_daemon"],
     )
-    assert res_attack["risk_score"] >= 70
-    assert res_attack["status"] == "ANOMALOUS"
-    assert len(res_attack["reasons"]) >= 3
-    assert "interactive shell" in res_attack["anomaly_details"]
+    assert res_attack.risk_score >= 70
+    assert res_attack.status == "ANOMALOUS"
+    assert len(res_attack.reasons) >= 3
+    assert "interactive shell" in res_attack.anomaly_details
+    assert res_attack.eval_status == "evaluated"
+    assert res_attack.detection_source == "both"
+    assert res_attack.risk_category in ("High", "Critical")
 
 
 def test_pipeline_and_api(tmp_path):

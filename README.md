@@ -354,6 +354,26 @@ python3 ML/src/train_plaid_isolation_forest.py
 python3 ML/src/cross_dataset_eval.py
 ```
 
+### Automated Model Retraining & Validation
+
+Chronicle provides an automated retraining workflow with strict schema validation, candidate evaluation, side-by-side baseline comparison, acceptance gates, candidate staging in a model registry, and safe atomic promotion with rollback:
+
+```bash
+# Validate input dataset quality and schema conformity
+python3 ML/src/retrain_pipeline.py --dataset adfa --model-type xgboost --data ML/DATA/processed/adfa_features.csv --validate-only
+
+# Retrain and evaluate candidate model against approved baseline
+python3 ML/src/retrain_pipeline.py --dataset adfa --model-type xgboost --data ML/DATA/processed/adfa_features.csv
+
+# Retrain with automatic promotion upon passing acceptance thresholds
+python3 ML/src/retrain_pipeline.py --dataset adfa --model-type xgboost --data ML/DATA/processed/adfa_features.csv --promote
+
+# Roll back to the previously approved model
+python3 ML/src/retrain_pipeline.py --dataset adfa --model-type xgboost --rollback
+```
+
+See [ML/README.md](file:///Users/divyanshimac/chronicle/ML/README.md) for full architecture, acceptance thresholds, schema isolation rules, and registry details.
+
 ### Current evaluation results
 
 | Dataset | Primary model | Attack recall | Accuracy | Notes |
@@ -457,6 +477,7 @@ Before opening a pull request:
 - XGBoost and Isolation Forest models
 - Evaluation reports and model artifacts
 - Debian packaging scaffold
+- Automated model retraining and validation workflow
 
 ### In progress
 
@@ -472,7 +493,6 @@ Before opening a pull request:
 - A complete real-time collector and dashboard integration
 - PostgreSQL-backed storage
 - Advanced behavioural baselining
-- Automated model retraining and validation
 - API or service interfaces for security tooling
 - A formal public license and release process
 
