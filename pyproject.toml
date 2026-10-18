@@ -69,10 +69,11 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"
-testpaths = ["tests"]
+testpaths = ["tests", "ML/tests"]
 pythonpath = ["src", "ML/src", "."]
 filterwarnings = [
     "ignore::sklearn.exceptions.InconsistentVersionWarning",
     "ignore::UserWarning:sklearn.utils.validation",
     "ignore::UserWarning:xgboost",
+    "ignore:.*If you are loading a serialized model.*:UserWarning",
 ]
