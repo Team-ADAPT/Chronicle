@@ -1,20 +1,23 @@
 """
-Bridge module enabling imports from src.chronicle.db
+Chronicle PostgreSQL Database Layer.
 """
 
-from pathlib import Path
-
-_root_db = Path(__file__).resolve().parent.parent.parent.parent / "chronicle" / "db"
-if _root_db.is_dir() and str(_root_db) not in __path__:
-    __path__.append(str(_root_db))
-
 from chronicle.db.config import DatabaseConfig, RetentionConfig
-from chronicle.db.connection import Database
+from chronicle.db.connection import (
+    Database,
+    DatabaseConfigurationError,
+    DatabaseConnectionError,
+    DatabaseError,
+)
+from chronicle.db.migrations import discover_migrations, run_migrations
 from chronicle.db.models import (
     BehaviourWindow,
     DetectionRecord,
+    DeviationResult,
     ProcessInstance,
+    ProcessLifecycleSummary,
     ProcessProfile,
+    ProgramHistorySummary,
     SystemMetric,
     TelemetryEvent,
 )
@@ -26,13 +29,21 @@ __all__ = [
     "Database",
     "DatabaseConfig",
     "RetentionConfig",
+    "DatabaseError",
+    "DatabaseConfigurationError",
+    "DatabaseConnectionError",
     "TelemetryRepository",
     "ProfileManager",
     "RetentionManager",
+    "run_migrations",
+    "discover_migrations",
     "ProcessInstance",
     "TelemetryEvent",
     "BehaviourWindow",
     "SystemMetric",
     "ProcessProfile",
     "DetectionRecord",
+    "ProcessLifecycleSummary",
+    "DeviationResult",
+    "ProgramHistorySummary",
 ]
