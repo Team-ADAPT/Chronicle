@@ -9,6 +9,7 @@ import json
 import math
 import sqlite3
 import threading
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -156,13 +157,18 @@ class ChronicleDatabase:
         self._lock = threading.Lock()
         self._init_db()
 
-    def _get_connection(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
+    @contextmanager
+    def _connection(self):
+        conn = sqlite3.connect(str(self.db_path), check_same_thread=False, timeout=10.0)
         conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
 
     def _init_db(self) -> None:
-        with self._lock, self._get_connection() as conn:
+        with self._lock, self._connection() as conn:
             conn.executescript("""
             CREATE TABLE IF NOT EXISTS process_events (
                 id TEXT PRIMARY KEY,
@@ -211,7 +217,7 @@ class ChronicleDatabase:
             """)
 
     def insert_event(self, ev: Dict[str, Any]) -> None:
-        with self._lock, self._get_connection() as conn:
+        with self._lock, self._connection() as conn:
             conn.execute("""
             INSERT OR REPLACE INTO process_events 
             (id, timestamp, pid, ppid, comm, user, event_type, cpu, mem, syscalls, risk_score, status, anomaly_details)
@@ -224,7 +230,7 @@ class ChronicleDatabase:
 
     def insert_alert(self, alert: Dict[str, Any]) -> None:
         reasons_json = json.dumps(alert.get("reasons", [])) if isinstance(alert.get("reasons"), list) else str(alert.get("reasons", ""))
-        with self._lock, self._get_connection() as conn:
+        with self._lock, self._connection() as conn:
             conn.execute("""
             INSERT OR REPLACE INTO alerts 
             (id, timestamp, pid, comm, risk_score, category, description, reasons, status)
@@ -236,16 +242,24 @@ class ChronicleDatabase:
             ))
 
     def update_alert_status(self, alert_id: str, new_status: str) -> None:
-        with self._lock, self._get_connection() as conn:
+        with self._lock, self._connection() as conn:
             conn.execute("UPDATE alerts SET status = ? WHERE id = ?", (new_status, alert_id))
 
+    def update_active_alerts_status(self, new_status: str) -> int:
+        with self._lock, self._connection() as conn:
+            cursor = conn.execute(
+                "UPDATE alerts SET status = ? WHERE status = 'ACTIVE'",
+                (new_status,),
+            )
+            return cursor.rowcount
+
     def get_recent_events(self, limit: int = 100) -> List[Dict[str, Any]]:
-        with self._lock, self._get_connection() as conn:
+        with self._lock, self._connection() as conn:
             rows = conn.execute("SELECT * FROM process_events ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
             return [dict(r) for r in rows]
 
     def get_active_alerts(self, limit: int = 50) -> List[Dict[str, Any]]:
-        with self._lock, self._get_connection() as conn:
+        with self._lock, self._connection() as conn:
             rows = conn.execute("SELECT * FROM alerts WHERE status = 'ACTIVE' ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
             res = []
             for r in rows:
@@ -258,7 +272,7 @@ class ChronicleDatabase:
             return res
 
     def insert_system_metric(self, metrics: Dict[str, Any]) -> None:
-        with self._lock, self._get_connection() as conn:
+        with self._lock, self._connection() as conn:
             conn.execute("""
             INSERT INTO system_metrics (timestamp, cpu_percent, mem_used_mb, mem_total_mb, syscall_rate, normalcy_percent, process_count)
             VALUES (?, ?, ?, ?, ?, ?, ?)
