@@ -623,13 +623,26 @@
     `).join('');
 
     container.querySelectorAll('.btn-ack').forEach(btn => {
-      btn.addEventListener('click', (ev) => {
+      btn.addEventListener('click', async (ev) => {
         ev.stopPropagation();
         const id = btn.getAttribute('data-id');
         const alert = state.alerts.find(a => a.id === id);
         if (alert) {
-          alert.acknowledged = true;
-          renderUI();
+          try {
+            if (state.backendConnected) {
+              const response = await fetch('/api/alerts/ack', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+              });
+              if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            }
+            alert.acknowledged = true;
+            renderUI();
+          } catch (err) {
+            console.error('Could not acknowledge alert:', err);
+            window.alert('Could not acknowledge this alert. Please try again.');
+          }
         }
       });
     });
@@ -912,9 +925,18 @@
       switchView('profilesView');
     });
 
-    document.getElementById('btnAckAllTop')?.addEventListener('click', () => {
-      state.alerts.forEach(a => a.acknowledged = true);
-      renderUI();
+    document.getElementById('btnAckAllTop')?.addEventListener('click', async () => {
+      try {
+        if (state.backendConnected) {
+          const response = await fetch('/api/alerts/ack-all', { method: 'POST' });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        }
+        state.alerts.forEach(a => a.acknowledged = true);
+        renderUI();
+      } catch (err) {
+        console.error('Could not acknowledge all alerts:', err);
+        window.alert('Could not acknowledge all alerts. Please try again.');
+      }
     });
 
     // Modal Background Click Closes
@@ -979,7 +1001,7 @@
         }));
       }
 
-      if (resAlerts && resAlerts.length > 0) {
+      if (resAlerts) {
         state.alerts = resAlerts.map(a => ({
           id: a.id,
           timestamp: a.timestamp,

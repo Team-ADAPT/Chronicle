@@ -111,7 +111,7 @@ class ChroniclePipeline:
         syscalls = ev.get("syscalls", 0)
         seq = ev.get("syscall_sequence", ["read", "write"])
         heuristics = ev.get("heuristic_flags", [])
-        event_ts = ev.get("timestamp")
+        event_ts = ev.get("timestamp") or datetime.now(timezone.utc).strftime("%H:%M:%S")
         ppid = ev.get("ppid", 1)
 
         # 1. Historical Baseline Comparison
@@ -149,7 +149,7 @@ class ChroniclePipeline:
 
         # Enriched event record (backward-compatible fields + new eval fields)
         enriched = {
-            "id": ev["id"],
+            "id": ev.get("id") or f"evt-{uuid.uuid4().hex[:8]}",
             "timestamp": event_ts,
             "pid": pid,
             "ppid": ppid,
@@ -259,6 +259,9 @@ class ChroniclePipeline:
 
     def kill_process(self, pid: int) -> bool:
         """Terminates a process or marks it terminated in the feed."""
+        if pid <= 0:
+            return False
+
         terminated = False
         try:
             p = psutil.Process(pid)
@@ -269,7 +272,7 @@ class ChroniclePipeline:
 
         with self._lock:
             for ev in self.recent_events:
-                if ev["pid"] == pid:
+                if ev.get("pid") == pid:
                     ev["terminated"] = True
                     ev["status"] = "SAFE"
                     ev["riskScore"] = 5
@@ -278,10 +281,18 @@ class ChroniclePipeline:
 
     def acknowledge_alert(self, alert_id: str) -> None:
         with self._lock:
+            self.db.update_alert_status(alert_id, "ACKNOWLEDGED")
             for a in self.active_alerts:
                 if a["id"] == alert_id:
                     a["status"] = "ACKNOWLEDGED"
-            self.db.update_alert_status(alert_id, "ACKNOWLEDGED")
+
+    def acknowledge_all_alerts(self) -> int:
+        with self._lock:
+            acknowledged_count = self.db.update_active_alerts_status("ACKNOWLEDGED")
+            for alert in self.active_alerts:
+                if alert["status"] == "ACTIVE":
+                    alert["status"] = "ACKNOWLEDGED"
+            return acknowledged_count
 
     def get_normalcy_percent(self) -> int:
         with self._lock:

@@ -561,10 +561,14 @@ class RiskEngine:
         epoch_for_dedup = int(now_utc.timestamp())
         if event_timestamp:
             try:
-                # event_timestamp is HH:MM:SS; combine with today's date for epoch
-                today = now_utc.strftime("%Y-%m-%d")
-                dt = datetime.strptime(f"{today}T{event_timestamp}", "%Y-%m-%dT%H:%M:%S")
-                dt = dt.replace(tzinfo=timezone.utc)
+                ts_clean = str(event_timestamp).rstrip("Z")
+                if "T" in ts_clean or "-" in ts_clean:
+                    dt = datetime.fromisoformat(str(event_timestamp))
+                else:
+                    today = now_utc.strftime("%Y-%m-%d")
+                    dt = datetime.strptime(f"{today}T{event_timestamp}", "%Y-%m-%dT%H:%M:%S")
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
                 epoch_for_dedup = int(dt.timestamp())
                 ts_source = "event"
             except Exception:
