@@ -708,6 +708,7 @@ class TestRegressionTask1:
             ROOT / "ML" / "src" / "retrain_pipeline.py"
         )
         mod = importlib.util.module_from_spec(spec)
+        sys.modules["retrain_pipeline"] = mod
         # Just ensure import doesn't crash
         spec.loader.exec_module(mod)
         assert hasattr(mod, "RetrainingPipeline")
@@ -719,6 +720,7 @@ class TestRegressionTask1:
             ROOT / "ML" / "src" / "validate_training_data.py"
         )
         mod = importlib.util.module_from_spec(spec)
+        sys.modules["validate_training_data"] = mod
         spec.loader.exec_module(mod)
         assert hasattr(mod, "TrainingDataValidator")
 

@@ -491,6 +491,7 @@ class RetrainingPipeline:
                 logger.info("Promoting accepted candidate %s to production...", run_record.run_id)
                 success, msg = self.registry.promote_candidate(run_record.run_id)
                 if success:
+                    run_record.promoted = True
                     logger.info("Promotion SUCCESSFUL: %s", msg)
                 else:
                     logger.error("Promotion FAILED: %s", msg)
