@@ -133,12 +133,11 @@ configs/local.yaml
 # Generated Documentation
 docs/generated/
 
-# Project-local files
-Project.md
-COMMIT_LOG.md
-task.md
-reference_screenshot.png
-reference_screenshot_2.png
+# Temporary & Local Scratch
+scratch/
+tmp/
+temp/
+*.tmp
 
 # macOS
 .Trashes
