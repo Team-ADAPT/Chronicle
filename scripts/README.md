@@ -12,7 +12,7 @@ This directory contains development, testing, database administration, and packa
 | `scripts/run_tests.sh` | Executes the complete test suite (pipeline, database storage, and ML inference). |
 | `scripts/db_manage.sh` | Convenience wrapper around the `python -m chronicle.db` CLI for migrations, health checks, and baselining. |
 | `packaging/build_deb.sh` | Builds the standalone Debian (`.deb`) installer package for Linux distribution. |
-| `Dataset/dataset_collector.py` | Automated workload simulator and telemetry dataset generator. |
+| `ebpf/dataset_collector.py` | Automated workload simulator and telemetry dataset generator. |
 
 ---
 
