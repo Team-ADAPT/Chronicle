@@ -845,19 +845,23 @@
       (e) => e.status === "ANOMALOUS" && !e.terminated,
     ).length;
     const suspCount = state.events.filter(
-      (e) => e.status === "SUSPICIOUS",
+      (e) => e.status === "SUSPICIOUS" || (e.riskScore != null && e.riskScore >= 40 && e.riskScore < 70),
     ).length;
-    const userCount = state.events.filter((e) => e.user !== "root").length;
     const sysCount = state.events.filter(
-      (e) => e.user === "root" && (e.status === "SAFE" || e.status === "NORMAL"),
+      (e) =>
+        (e.cluster === "systemd" || e.user === "root" || e.user === "system") &&
+        (e.status === "SAFE" || e.status === "NORMAL"),
     ).length;
 
     const anomPct = Math.round((anomCount / total) * 100);
     const suspPct = Math.round((suspCount / total) * 100);
-    const userPct = Math.round((userCount / total) * 100);
-    const sysPct = Math.max(0, 100 - anomPct - suspPct - userPct);
+    const sysPct = Math.round((sysCount / total) * 100);
+    const userPct = Math.max(0, 100 - anomPct - suspPct - sysPct);
 
-    const health = Math.max(15, 100 - (anomPct * 6 + suspPct * 2));
+    const health =
+      state.backendStats && state.backendStats.normalcy_percent != null
+        ? state.backendStats.normalcy_percent
+        : Math.max(15, 100 - (anomPct * 6 + suspPct * 2));
 
     if (scoreEl) scoreEl.textContent = `${health}%`;
     if (legSys) legSys.textContent = `${sysPct}%`;
