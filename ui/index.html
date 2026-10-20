@@ -201,7 +201,7 @@
               </div>
               <div class="kpi-card-middle">
                 <div class="kpi-value font-mono" id="cpuUtilization">12.4%</div>
-                <div class="kpi-subtext">42 Active Processes • 186 Threads</div>
+                <div class="kpi-subtext" id="cpuSubtext">42 Active Processes • 186 Threads</div>
               </div>
               <!-- Mini live sparkline preview -->
               <div class="kpi-sparkline">
@@ -279,7 +279,7 @@
             <div class="cluster-card" data-filter="systemd">
               <div class="cluster-header">
                 <div class="cluster-icon emerald">🐧</div>
-                <span class="cluster-badge">18 Procs</span>
+                <span class="cluster-badge" id="clusterCountSystemd">-- Procs</span>
               </div>
               <div class="cluster-name">System Daemons</div>
               <div class="cluster-meta">systemd, cron, udevd, journald</div>
@@ -288,7 +288,7 @@
             <div class="cluster-card" data-filter="nginx">
               <div class="cluster-header">
                 <div class="cluster-icon blue">🌐</div>
-                <span class="cluster-badge">8 Procs</span>
+                <span class="cluster-badge" id="clusterCountNginx">-- Procs</span>
               </div>
               <div class="cluster-name">Network & Web</div>
               <div class="cluster-meta">nginx, sshd, rsyslog, dnsmasq</div>
@@ -297,7 +297,7 @@
             <div class="cluster-card" data-filter="bash">
               <div class="cluster-header">
                 <div class="cluster-icon peach">💻</div>
-                <span class="cluster-badge">12 Procs</span>
+                <span class="cluster-badge" id="clusterCountBash">-- Procs</span>
               </div>
               <div class="cluster-name">User Shells & Apps</div>
               <div class="cluster-meta">bash, python3, zsh, node</div>
@@ -306,7 +306,7 @@
             <div class="cluster-card" data-filter="dockerd">
               <div class="cluster-header">
                 <div class="cluster-icon purple">🐳</div>
-                <span class="cluster-badge">4 Procs</span>
+                <span class="cluster-badge" id="clusterCountDockerd">-- Procs</span>
               </div>
               <div class="cluster-name">Containers & Workers</div>
               <div class="cluster-meta">dockerd, containerd, kswapd</div>
