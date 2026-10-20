@@ -309,6 +309,40 @@ def tracepoint_exists(group: str, name: str) -> bool:
     return False
 
 
+def classify_process_cluster(comm: str, username: str = "") -> str:
+    """Categorizes a process into one of Chronicle's four architecture clusters."""
+    c = (comm or "").lower()
+    u = (username or "").lower()
+
+    # Network & Web
+    if any(k in c for k in (
+        "nginx", "apache", "http", "ssh", "dns", "rsyslog", "curl", "wget",
+        "socket", "net", "chrome", "firefox", "safari", "browser", "discord",
+        "slack", "mail", "fetch", "cloud", "sync", "mdns", "bluetooth", "wifi",
+        "network", "tcp", "udp", "router"
+    )):
+        return "nginx"
+
+    # Containers & Workers
+    if any(k in c for k in (
+        "docker", "container", "runc", "kswapd", "worker", "celery", "redis",
+        "postgres", "mysql", "mongo", "daemon", "db", "engine", "service", "core"
+    )):
+        return "dockerd"
+
+    # User Shells & Apps
+    if any(k in c for k in (
+        "bash", "zsh", "sh", "fish", "python", "node", "npm", "ruby", "perl",
+        "git", "code", "electron", "antigravity", "vim", "nano", "cat", "grep",
+        "sudo", "cargo", "rust", "go", "java", "terminal", "iterm", "alacritty",
+        "sublime", "cursor", "idea", "pycharm"
+    )) or (u and u not in ("root", "system", "_spotlight", "windowserver", "_coreaudiod", "_locationd", "_distnote")):
+        return "bash"
+
+    # System Daemons & Kernel Threads
+    return "systemd"
+
+
 class TelemetryCollector:
     """Collects real Linux telemetry from kernel eBPF probes or live host processes."""
 
@@ -502,6 +536,7 @@ class TelemetryCollector:
                 "ppid": item["ppid"],
                 "comm": item["name"],
                 "user": item["user"],
+                "cluster": classify_process_cluster(item["name"], item["user"]),
                 "eventType": "sys_sample",
                 "cpu": round(item["cpu"], 1),
                 "mem": item["mem"],
@@ -524,6 +559,23 @@ class TelemetryCollector:
 
         syscall_rate = int(max(600, proc_count * 15 + int(cpu_pct * 35)))
 
+        # Accurately categorize running processes across the 4 clusters and count threads
+        cluster_counts = {"systemd": 0, "nginx": 0, "bash": 0, "dockerd": 0}
+        total_threads = 0
+        try:
+            for p in psutil.process_iter(["name", "username", "num_threads"]):
+                try:
+                    info = p.info
+                    name = info.get("name") or ""
+                    user = info.get("username") or ""
+                    total_threads += (info.get("num_threads") or 1)
+                    cl = classify_process_cluster(name, user)
+                    cluster_counts[cl] += 1
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+        except Exception:
+            pass
+
         return {
             "timestamp": datetime.now(timezone.utc).strftime("%H:%M:%S UTC"),
             "cpu_percent": cpu_pct,
@@ -532,6 +584,8 @@ class TelemetryCollector:
             "mem_total_mb": round(mem.total / (1024 ** 2), 1),
             "memory_usage_display": f"{mem_used_gb} GB / {mem_total_gb} GB",
             "process_count": proc_count,
+            "thread_count": total_threads,
+            "cluster_counts": cluster_counts,
             "syscall_rate": syscall_rate,
             "syscall_rate_display": f"{syscall_rate:,} calls/s",
         }

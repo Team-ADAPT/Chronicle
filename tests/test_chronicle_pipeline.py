@@ -269,6 +269,23 @@ def test_process_history_query_and_api(tmp_path):
     assert data["summary"]["peak_cpu"] >= 0.0
 
 
+def test_process_cluster_classification():
+    """Verify process clustering logic categorizes programs into correct architectural groups."""
+    from chronicle.collector import classify_process_cluster
+    assert classify_process_cluster("systemd", "root") == "systemd"
+    assert classify_process_cluster("cron", "root") == "systemd"
+    assert classify_process_cluster("udevd", "root") == "systemd"
+    assert classify_process_cluster("nginx", "www-data") == "nginx"
+    assert classify_process_cluster("sshd", "root") == "nginx"
+    assert classify_process_cluster("curl", "anurag") == "nginx"
+    assert classify_process_cluster("bash", "anurag") == "bash"
+    assert classify_process_cluster("zsh", "anurag") == "bash"
+    assert classify_process_cluster("python3", "anurag") == "bash"
+    assert classify_process_cluster("dockerd", "root") == "dockerd"
+    assert classify_process_cluster("containerd", "root") == "dockerd"
+    assert classify_process_cluster("redis-server", "redis") == "dockerd"
+
+
 if __name__ == "__main__":
     import tempfile
     print("Running Chronicle pipeline tests...")
@@ -289,4 +306,6 @@ if __name__ == "__main__":
         print("  ✓ test_pipeline_and_api")
         test_process_history_query_and_api(Path(td))
         print("  ✓ test_process_history_query_and_api")
+    test_process_cluster_classification()
+    print("  ✓ test_process_cluster_classification")
     print("All Chronicle pipeline & integration tests PASSED!")
