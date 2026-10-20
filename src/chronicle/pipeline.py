@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from chronicle.config import ChronicleConfig
-from chronicle.collector import TelemetryCollector, classify_process_cluster
+from chronicle.collector import TelemetryCollector, classify_process_cluster, IST
 from chronicle.ml_detector import MLDetectionEngine
 from chronicle.risk_engine import RiskEngine, ScoringResult
 from chronicle.storage import ChronicleDatabase, ProcessProfile
@@ -116,7 +116,7 @@ class ChroniclePipeline:
         syscalls = ev.get("syscalls", 0)
         seq = ev.get("syscall_sequence", ["read", "write"])
         heuristics = ev.get("heuristic_flags", [])
-        event_ts = ev.get("timestamp") or datetime.now(timezone.utc).strftime("%H:%M:%S")
+        event_ts = ev.get("timestamp") or datetime.now(IST).strftime("%H:%M:%S")
         ppid = ev.get("ppid", 1)
 
         # 1. Historical Baseline Comparison

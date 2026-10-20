@@ -16,6 +16,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+IST = timezone(timedelta(hours=5, minutes=30))
+
 
 class OnlineMetric:
     """Welford's algorithm for numerically stable running mean and standard deviation."""
@@ -338,7 +340,7 @@ class ChronicleDatabase:
             }
             spec = profiles_db.get(comm, {"cpu": 2.5, "mem": 45.0, "net": 12.0, "sc": 180, "user": user or "user"})
             eff_pid = pid if (pid and pid > 0) else random.randint(1200, 9500)
-            now_dt = datetime.now(timezone.utc)
+            now_dt = datetime.now(IST)
 
             # Generate spaced checkpoints across the requested days (24 to 40 historical points)
             hours_total = max(24, days * 24)
@@ -388,7 +390,7 @@ class ChronicleDatabase:
         self.seed_process_history_if_needed(comm=comm, pid=pid, days=days)
 
         with self._lock, self._connection() as conn:
-            cutoff_dt = datetime.now(timezone.utc) - timedelta(days=days)
+            cutoff_dt = datetime.now(IST) - timedelta(days=days)
             cutoff_str = cutoff_dt.strftime("%Y-%m-%d %H:%M:%S")
 
             cursor = conn.execute("""

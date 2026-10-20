@@ -18,12 +18,13 @@ import sys
 import threading
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
 import psutil
 
 logger = logging.getLogger("chronicle.collector")
+IST = timezone(timedelta(hours=5, minutes=30))
 
 # --------------------------------------------------------------------------- #
 # BPF C Source (BCC Kernel Telemetry Probes)
@@ -421,7 +422,7 @@ class TelemetryCollector:
                 return
 
             event_type = EV_NAMES.get(etype_code, "sys_event")
-            now_str = datetime.now(timezone.utc).strftime("%H:%M:%S")
+            now_str = datetime.now(IST).strftime("%H:%M:%S")
 
             # Look up process stats from psutil
             cpu_pct = 0.0
@@ -485,7 +486,7 @@ class TelemetryCollector:
         Retrieves actual CPU, memory, thread counts, and syscall activity.
         """
         events: List[Dict[str, Any]] = []
-        now_str = datetime.now(timezone.utc).strftime("%H:%M:%S")
+        now_str = datetime.now(IST).strftime("%H:%M:%S")
 
         # Collect active live processes on this host
         active_candidates = []
@@ -605,7 +606,7 @@ class TelemetryCollector:
             pass
 
         return {
-            "timestamp": datetime.now(timezone.utc).strftime("%H:%M:%S UTC"),
+            "timestamp": datetime.now(IST).strftime("%H:%M:%S IST"),
             "cpu_percent": cpu_pct,
             "cpu_utilization_display": f"{cpu_pct}%",
             "mem_used_mb": round((mem.total - mem.available) / (1024 ** 2), 1),
@@ -628,7 +629,7 @@ class TelemetryCollector:
             "privesc": "privilege_escalation",
         }
         scenario_key = aliases.get(scenario_key, scenario_key)
-        now_str = datetime.now(timezone.utc).strftime("%H:%M:%S")
+        now_str = datetime.now(IST).strftime("%H:%M:%S")
 
         scenarios = {
             "interactive_shell_from_daemon": {

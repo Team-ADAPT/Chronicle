@@ -389,7 +389,13 @@
       }
     }
 
-    const timestamp = (customDate || new Date()).toLocaleTimeString();
+    const timestamp = (customDate || new Date()).toLocaleTimeString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
 
     const anomalousEvent = {
       id: "evt-" + Date.now().toString().slice(-6),
@@ -790,7 +796,11 @@
           <div class="alert-meta-row font-mono">
             <span>Process: <strong>${a.comm}</strong> (PID ${a.pid})</span>
             <span>•</span>
-            <span>${a.timestamp}</span>
+            <span>${
+              a.timestamp && (a.timestamp.includes("T") || a.timestamp.includes("Z"))
+                ? new Date(a.timestamp).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour12: false }) + " IST"
+                : a.timestamp
+            }</span>
             <span>•</span>
             <span>Confidence: 96.4%</span>
           </div>
@@ -2005,8 +2015,14 @@
       }
       const statusClock = document.getElementById("statusbarClock");
       if (statusClock) {
-        const d = new Date();
-        statusClock.textContent = d.toTimeString().split(" ")[0] + " UTC";
+        const timeStr = new Date().toLocaleTimeString("en-IN", {
+          timeZone: "Asia/Kolkata",
+          hour12: false,
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+        statusClock.textContent = `${timeStr} IST`;
       }
     }, 1000);
   }
