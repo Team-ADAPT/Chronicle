@@ -389,7 +389,13 @@
       }
     }
 
-    const timestamp = (customDate || new Date()).toLocaleTimeString();
+    const timestamp = (customDate || new Date()).toLocaleTimeString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
 
     const anomalousEvent = {
       id: "evt-" + Date.now().toString().slice(-6),
@@ -790,7 +796,11 @@
           <div class="alert-meta-row font-mono">
             <span>Process: <strong>${a.comm}</strong> (PID ${a.pid})</span>
             <span>•</span>
-            <span>${a.timestamp}</span>
+            <span>${
+              a.timestamp && (a.timestamp.includes("T") || a.timestamp.includes("Z"))
+                ? new Date(a.timestamp).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour12: false }) + " IST"
+                : a.timestamp
+            }</span>
             <span>•</span>
             <span>Confidence: 96.4%</span>
           </div>
@@ -845,19 +855,23 @@
       (e) => e.status === "ANOMALOUS" && !e.terminated,
     ).length;
     const suspCount = state.events.filter(
-      (e) => e.status === "SUSPICIOUS",
+      (e) => e.status === "SUSPICIOUS" || (e.riskScore != null && e.riskScore >= 40 && e.riskScore < 70),
     ).length;
-    const userCount = state.events.filter((e) => e.user !== "root").length;
     const sysCount = state.events.filter(
-      (e) => e.user === "root" && e.status === "NORMAL",
+      (e) =>
+        (e.cluster === "systemd" || e.user === "root" || e.user === "system") &&
+        (e.status === "SAFE" || e.status === "NORMAL"),
     ).length;
 
     const anomPct = Math.round((anomCount / total) * 100);
     const suspPct = Math.round((suspCount / total) * 100);
-    const userPct = Math.round((userCount / total) * 100);
-    const sysPct = Math.max(0, 100 - anomPct - suspPct - userPct);
+    const sysPct = Math.round((sysCount / total) * 100);
+    const userPct = Math.max(0, 100 - anomPct - suspPct - sysPct);
 
-    const health = Math.max(15, 100 - (anomPct * 6 + suspPct * 2));
+    const health =
+      state.backendStats && state.backendStats.normalcy_percent != null
+        ? state.backendStats.normalcy_percent
+        : Math.max(15, 100 - (anomPct * 6 + suspPct * 2));
 
     if (scoreEl) scoreEl.textContent = `${health}%`;
     if (legSys) legSys.textContent = `${sysPct}%`;
@@ -2001,8 +2015,14 @@
       }
       const statusClock = document.getElementById("statusbarClock");
       if (statusClock) {
-        const d = new Date();
-        statusClock.textContent = d.toTimeString().split(" ")[0] + " UTC";
+        const timeStr = new Date().toLocaleTimeString("en-IN", {
+          timeZone: "Asia/Kolkata",
+          hour12: false,
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+        statusClock.textContent = `${timeStr} IST`;
       }
     }, 1000);
   }

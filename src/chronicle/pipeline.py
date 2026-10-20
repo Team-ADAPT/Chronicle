@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from chronicle.config import ChronicleConfig
-from chronicle.collector import TelemetryCollector, classify_process_cluster
+from chronicle.collector import TelemetryCollector, classify_process_cluster, IST
 from chronicle.ml_detector import MLDetectionEngine
 from chronicle.risk_engine import RiskEngine, ScoringResult
 from chronicle.storage import ChronicleDatabase, ProcessProfile
@@ -52,11 +52,16 @@ class ChroniclePipeline:
     def _seed_baseline_profiles(self) -> None:
         """Establish baseline profiles from initial live host process inspection."""
         try:
-            initial_procs = self.collector.sample_active_processes(limit=40)
+            initial_procs = self.collector.sample_active_processes(limit=50)
             for p in initial_procs:
                 comm = p["comm"]
                 prof = ProcessProfile(comm=comm, user=p["user"])
-                prof.update(cpu=p["cpu"], mem=p["mem"], syscalls=p["syscalls"], event_type="sys_sample")
+                cpu = p["cpu"]
+                mem = p["mem"]
+                sysc = p["syscalls"]
+                prof.update(cpu=cpu, mem=mem, syscalls=sysc, event_type="sys_sample")
+                prof.update(cpu=max(0.0, cpu * 0.7), mem=mem * 0.98, syscalls=max(10, int(sysc * 0.95)), event_type="sys_sample")
+                prof.update(cpu=cpu * 1.3 + 1.5, mem=mem * 1.02 + 10.0, syscalls=int(sysc * 1.1 + 15), event_type="sys_sample")
                 self.profiles[comm] = prof
         except Exception as exc:
             logger.debug("Baseline profile initialization: %s", exc)
@@ -111,7 +116,7 @@ class ChroniclePipeline:
         syscalls = ev.get("syscalls", 0)
         seq = ev.get("syscall_sequence", ["read", "write"])
         heuristics = ev.get("heuristic_flags", [])
-        event_ts = ev.get("timestamp") or datetime.now(timezone.utc).strftime("%H:%M:%S")
+        event_ts = ev.get("timestamp") or datetime.now(IST).strftime("%H:%M:%S")
         ppid = ev.get("ppid", 1)
 
         # 1. Historical Baseline Comparison
@@ -147,6 +152,12 @@ class ChroniclePipeline:
         risk_score = scoring_result.risk_score
         status = scoring_result.status
 
+        # When process is safe (no heuristic/ML alerts), compute dynamic baseline activity score (4 - 24)
+        # based on active CPU, syscalls, and envelope variance so active processes show an informative living score
+        if risk_score == 0 and status == "SAFE" and self.config.enable_risk_scoring:
+            max_z = float(deviations.get("max_z", 0.0) or 0.0)
+            risk_score = max(4, min(24, int(4 + (cpu * 1.5) + (max_z * 6.0) + (min(600, syscalls) / 80.0))))
+
         # Enriched event record (backward-compatible fields + new eval fields)
         enriched = {
             "id": ev.get("id") or f"evt-{uuid.uuid4().hex[:8]}",
@@ -177,12 +188,19 @@ class ChroniclePipeline:
             self.recent_events.appendleft(enriched)
             self.total_events_processed += 1
 
-            # 4. Alert Generation (only for scored, non-disabled events)
-            if (
+            # 4. Alert Generation (only for genuine high-risk or heuristic/ML attacks)
+            # Statistical drift alone (Medium risk < 50) is logged as normal telemetry, not a security alert.
+            is_security_alert = (
                 self.config.enable_risk_scoring
                 and scoring_result.eval_status == "evaluated"
-                and (status in ("SUSPICIOUS", "ANOMALOUS") or risk_score >= 40)
-            ):
+                and (
+                    status == "ANOMALOUS"
+                    or risk_score >= 50
+                    or len(heuristics) > 0
+                    or ml_result.get("xgb_attack", False)
+                )
+            )
+            if is_security_alert:
                 self.total_anomalies_detected += 1
                 alert = RiskEngine.create_alert(
                     comm=comm,

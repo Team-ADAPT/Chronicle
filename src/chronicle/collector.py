@@ -18,12 +18,13 @@ import sys
 import threading
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
 import psutil
 
 logger = logging.getLogger("chronicle.collector")
+IST = timezone(timedelta(hours=5, minutes=30))
 
 # --------------------------------------------------------------------------- #
 # BPF C Source (BCC Kernel Telemetry Probes)
@@ -352,6 +353,7 @@ class TelemetryCollector:
         self._syscall_name_fn = None
         self.kernel_event_queue: queue.Queue[Dict[str, Any]] = queue.Queue(maxsize=10000)
         self.recent_syscall_traces: Dict[int, collections.deque[str]] = collections.defaultdict(lambda: collections.deque(maxlen=64))
+        self._proc_cache: Dict[int, psutil.Process] = {}
 
         if enable_ebpf and platform.system() == "Linux" and hasattr(os, "geteuid") and os.geteuid() == 0:
             self._try_init_bpf()
@@ -420,7 +422,7 @@ class TelemetryCollector:
                 return
 
             event_type = EV_NAMES.get(etype_code, "sys_event")
-            now_str = datetime.now(timezone.utc).strftime("%H:%M:%S")
+            now_str = datetime.now(IST).strftime("%H:%M:%S")
 
             # Look up process stats from psutil
             cpu_pct = 0.0
@@ -484,19 +486,37 @@ class TelemetryCollector:
         Retrieves actual CPU, memory, thread counts, and syscall activity.
         """
         events: List[Dict[str, Any]] = []
-        now_str = datetime.now(timezone.utc).strftime("%H:%M:%S")
+        now_str = datetime.now(IST).strftime("%H:%M:%S")
 
         # Collect active live processes on this host
         active_candidates = []
-        for p in psutil.process_iter(["pid", "ppid", "name", "username", "cpu_percent", "memory_info"]):
+        current_pids = set()
+
+        for p in psutil.process_iter(["pid", "ppid", "name", "username", "memory_info"]):
             try:
                 info = p.info
                 name = info.get("name") or ""
                 pid = info.get("pid") or 0
-                if pid == 0 or pid == os.getpid():
+                if pid <= 0 or pid == os.getpid():
                     continue
 
-                cpu = float(info.get("cpu_percent") or 0.0)
+                current_pids.add(pid)
+                proc = self._proc_cache.get(pid)
+                if proc is None:
+                    try:
+                        proc = psutil.Process(pid)
+                        proc.cpu_percent(None)  # prime baseline measurement
+                        self._proc_cache[pid] = proc
+                        cpu = 0.0
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        cpu = 0.0
+                else:
+                    try:
+                        cpu = float(proc.cpu_percent(None) or 0.0)
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        self._proc_cache.pop(pid, None)
+                        cpu = 0.0
+
                 mem_bytes = info.get("memory_info").rss if info.get("memory_info") else 0
                 mem_mb = round(mem_bytes / (1024 * 1024), 1)
 
@@ -505,11 +525,17 @@ class TelemetryCollector:
                     "ppid": info.get("ppid") or 1,
                     "name": name,
                     "user": info.get("username") or "system",
-                    "cpu": cpu,
+                    "cpu": round(cpu, 1),
                     "mem": mem_mb,
                 })
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 continue
+
+        # Prune dead pids periodically
+        if len(self._proc_cache) > len(current_pids) + 50:
+            dead_pids = [pid for pid in self._proc_cache if pid not in current_pids]
+            for pid in dead_pids:
+                self._proc_cache.pop(pid, None)
 
         # Sort so the most active processes on the host are inspected first
         active_candidates.sort(key=lambda x: (x["cpu"], x["mem"]), reverse=True)
@@ -521,7 +547,8 @@ class TelemetryCollector:
                 # Derive typical baseline sequence for observed program
                 seq = ["read", "write", "futex", "close", "read"]
 
-            syscall_count = max(8, int(item["cpu"] * 25 + len(seq) * 12))
+            base_syscalls = 35 + len(seq) * 8
+            syscall_count = max(10, int(base_syscalls + (item["cpu"] * 5.0)))
             
             # Estimate network bandwidth based on daemon category and activity
             if any(k in item["name"].lower() for k in ("nginx", "curl", "chrome", "firefox", "sshd", "ssh", "dockerd", "postgres", "node", "socket")):
@@ -552,6 +579,8 @@ class TelemetryCollector:
     def get_system_metrics(self) -> Dict[str, Any]:
         """Collects REAL system resource usage from the host operating system."""
         cpu_pct = round(psutil.cpu_percent(interval=None), 1)
+        if cpu_pct <= 0.0:
+            cpu_pct = round(psutil.cpu_percent(interval=0.08), 1)
         mem = psutil.virtual_memory()
         mem_used_gb = round((mem.total - mem.available) / (1024 ** 3), 1)
         mem_total_gb = round(mem.total / (1024 ** 3), 1)
@@ -577,7 +606,7 @@ class TelemetryCollector:
             pass
 
         return {
-            "timestamp": datetime.now(timezone.utc).strftime("%H:%M:%S UTC"),
+            "timestamp": datetime.now(IST).strftime("%H:%M:%S IST"),
             "cpu_percent": cpu_pct,
             "cpu_utilization_display": f"{cpu_pct}%",
             "mem_used_mb": round((mem.total - mem.available) / (1024 ** 2), 1),
@@ -600,7 +629,7 @@ class TelemetryCollector:
             "privesc": "privilege_escalation",
         }
         scenario_key = aliases.get(scenario_key, scenario_key)
-        now_str = datetime.now(timezone.utc).strftime("%H:%M:%S")
+        now_str = datetime.now(IST).strftime("%H:%M:%S")
 
         scenarios = {
             "interactive_shell_from_daemon": {
