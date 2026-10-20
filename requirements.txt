@@ -1,30 +1,61 @@
 # ============================================================================
-# Chronicle — Python Dependencies
-# PBL Project: Team ID: OSDBMS-V-2026-T-005
-# Academic Session 2026–27
+# Chronicle — Host Behaviour Analysis and Activity Monitoring System
+# Course: OS & DBMS Project-Based Learning (PBL)
+# Team ID: OSDBMS-V-2026-T-005 | Academic Session 2026–27
+# Graphic Era (Deemed to be University), Dehradun
 # ============================================================================
 
-# --- Core Runtime & Desktop Interface ---
-psutil>=5.9.0
+# --- Core Telemetry & Process Observation ---
+# Used for real-time process table traversal, CPU/memory profiling, thread metrics,
+# open file descriptors, network connections, and I/O rate sampling.
+psutil>=5.9.0,<8.0.0
+
+# --- Desktop GUI Interface ---
+# Native WebKit desktop window wrapper (invoked via `python3 app.py --window`).
+# If omitted or unavailable, Chronicle automatically falls back to system browser.
 pywebview>=4.4.0
 
-# --- Data Processing & Machine Learning (Embedded In-Process) ---
+# --- Scientific Computing & Data Processing ---
+# High-performance multi-dimensional array operations, mathematical transformations,
+# and feature matrix construction.
 numpy>=1.26.0
+
+# Tabular data manipulation, time-series telemetry aggregations, CSV trace parsing,
+# and feature schema serialization.
 pandas>=2.0.0
+
+# --- Embedded Machine Learning (In-Process Anomaly Detection) ---
+# Isolation Forest unsupervised outlier detection, StandardScaler feature scaling,
+# train/test validation splits, and evaluation metrics (ROC-AUC, Precision, Recall, F1).
 scikit-learn>=1.3.0
+
+# Extreme Gradient Boosting classifier for calibrated behavioral anomaly risk scoring,
+# feature importance extraction, and multi-signal classification.
 xgboost>=2.0.0
+
+# High-efficiency serialization and deserialization of trained model pipelines,
+# pre-computed scaler parameters, and offline training weights.
 joblib>=1.3.0
+
+# --- Statistical Visualization & Offline Analytics ---
+# Plotting ROC/Precision-Recall curves, feature distribution histograms, and
+# latency percentiles during training and evaluation runs.
 matplotlib>=3.8.0
 seaborn>=0.13.0
 
-# --- Storage & DBMS Layer ---
-# PostgreSQL driver (psycopg v3); SQLite is built into standard Python
+# --- Storage & Relational DBMS Layer ---
+# PostgreSQL client library (Psycopg 3 with pre-compiled C binary extensions).
+# Note: SQLite is built into Python's standard library (`sqlite3`) and serves
+# as the default zero-configuration database backend for single-machine deployments.
 psycopg[binary]>=3.1.0
 
-# --- Testing & Verification ---
+# --- Automated Testing & Quality Assurance ---
+# Unit, regression, and integration test runner for test suites in `tests/` and `ML/tests/`.
 pytest>=8.0.0
 
-# --- Linux Kernel eBPF Notes ---
-# Linux eBPF/BCC monitoring requires host kernel headers and system tools:
-#   sudo apt update
-#   sudo apt install -y bpfcc-tools python3-bpfcc linux-headers-$(uname -r)
+# --- Operating System Kernel Dependencies (Linux Only) ---
+# Kernel-level tracing via eBPF/BCC requires Linux host kernel headers and BCC tools:
+#   Debian/Ubuntu:
+#     sudo apt update && sudo apt install -y bpfcc-tools python3-bpfcc linux-headers-$(uname -r)
+#   Fedora/RHEL:
+#     sudo dnf install -y bcc-tools python3-bcc kernel-devel-$(uname -r)

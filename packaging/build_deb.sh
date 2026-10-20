@@ -29,7 +29,6 @@ cp app.py "${PKG_DIR}/opt/chronicle/"
 cp requirements.txt "${PKG_DIR}/opt/chronicle/"
 cp -r ui/* "${PKG_DIR}/opt/chronicle/ui/"
 cp -r src/* "${PKG_DIR}/opt/chronicle/src/"
-cp -r chronicle/db/* "${PKG_DIR}/opt/chronicle/src/chronicle/db/"
 if [ -d "ML/models" ]; then
     cp -r ML/models/* "${PKG_DIR}/opt/chronicle/ML/models/"
 fi

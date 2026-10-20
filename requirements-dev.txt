@@ -1,0 +1,15 @@
+# ============================================================================
+# Chronicle — Development, Testing & Packaging Dependencies
+# Install with: pip install -r requirements-dev.txt
+# ============================================================================
+
+-r requirements.txt
+
+# --- Test Coverage & Reporting ---
+pytest-cov>=4.1.0
+
+# --- Code Formatting & Static Analysis ---
+ruff>=0.4.0
+
+# --- Standalone Binary Packaging (ELF Executable for Linux .deb) ---
+pyinstaller>=6.4.0
