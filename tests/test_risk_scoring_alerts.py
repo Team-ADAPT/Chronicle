@@ -22,7 +22,16 @@ from pathlib import Path
 from typing import Any, Dict, List
 from unittest.mock import MagicMock, patch
 
-import pytest
+try:
+    import pytest
+except ImportError:
+    class _DummyPytest:
+        @staticmethod
+        def fixture(*args, **kwargs):
+            def decorator(fn):
+                return fn
+            return decorator
+    pytest = _DummyPytest()
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))

@@ -7,9 +7,14 @@ cd "${DIR}"
 
 export PYTHONPATH="${DIR}/src:${DIR}:${PYTHONPATH}"
 
-if [ $# -eq 0 ]; then
-    echo "Usage: ./scripts/db_manage.sh [migrate|status|retention|profile|ingest] [options]"
-    exec python3 -m chronicle.db --help
+PYTHON_BIN="python3"
+if [ -x "${DIR}/.venv/bin/python" ]; then
+    PYTHON_BIN="${DIR}/.venv/bin/python"
 fi
 
-exec python3 -m chronicle.db "$@"
+if [ $# -eq 0 ]; then
+    echo "Usage: ./scripts/db_manage.sh [migrate|status|retention|profile|ingest] [options]"
+    exec "${PYTHON_BIN}" -m chronicle.db --help
+fi
+
+exec "${PYTHON_BIN}" -m chronicle.db "$@"

@@ -52,7 +52,10 @@ class ChronicleHTTPHandler(SimpleHTTPRequestHandler):
             self.send_error(404, "Not Found")
 
     def _handle_api(self, method: str):
-        content_length = int(self.headers.get("Content-Length", 0))
+        try:
+            content_length = max(0, int(self.headers.get("Content-Length", 0)))
+        except (ValueError, TypeError):
+            content_length = 0
         body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
 
         if _api_handler:
@@ -190,6 +193,7 @@ def main():
     parser = argparse.ArgumentParser(description="Chronicle Host Behaviour Analysis System")
     parser.add_argument("--port", type=int, default=8000, help="Port to bind server (default: 8000)")
     parser.add_argument("--no-browser", action="store_true", help="Do not automatically open default web browser")
+    parser.add_argument("--no-gui", action="store_true", help="Run without opening web browser or native GUI window")
     parser.add_argument("--window", action="store_true", help="Force native window mode using pywebview")
     parser.add_argument("--no-ebpf", action="store_true", help="Disable eBPF even if available on Linux")
 
@@ -204,12 +208,14 @@ def main():
     _pipeline.start()
     _api_handler = ChronicleAPIHandler(_pipeline)
 
-    if args.window:
+    should_open_browser = not (args.no_browser or args.no_gui)
+
+    if args.window and not args.no_gui:
         if not run_native_window(port=args.port):
             print("Notice: 'pywebview' is not available. Falling back to local browser mode.")
-            run_web_server(port=args.port, open_browser=not args.no_browser)
+            run_web_server(port=args.port, open_browser=should_open_browser)
     else:
-        run_web_server(port=args.port, open_browser=not args.no_browser)
+        run_web_server(port=args.port, open_browser=should_open_browser)
 
 
 if __name__ == "__main__":
