@@ -152,6 +152,12 @@ class ChroniclePipeline:
         risk_score = scoring_result.risk_score
         status = scoring_result.status
 
+        # When process is safe (no heuristic/ML alerts), compute dynamic baseline activity score (4 - 24)
+        # based on active CPU, syscalls, and envelope variance so active processes show an informative living score
+        if risk_score == 0 and status == "SAFE" and self.config.enable_risk_scoring:
+            max_z = float(deviations.get("max_z", 0.0) or 0.0)
+            risk_score = max(4, min(24, int(4 + (cpu * 1.5) + (max_z * 6.0) + (min(600, syscalls) / 80.0))))
+
         # Enriched event record (backward-compatible fields + new eval fields)
         enriched = {
             "id": ev.get("id") or f"evt-{uuid.uuid4().hex[:8]}",

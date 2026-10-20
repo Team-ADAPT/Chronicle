@@ -849,7 +849,7 @@
     ).length;
     const userCount = state.events.filter((e) => e.user !== "root").length;
     const sysCount = state.events.filter(
-      (e) => e.user === "root" && e.status === "NORMAL",
+      (e) => e.user === "root" && (e.status === "SAFE" || e.status === "NORMAL"),
     ).length;
 
     const anomPct = Math.round((anomCount / total) * 100);

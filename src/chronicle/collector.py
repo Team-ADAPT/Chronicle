@@ -553,6 +553,8 @@ class TelemetryCollector:
     def get_system_metrics(self) -> Dict[str, Any]:
         """Collects REAL system resource usage from the host operating system."""
         cpu_pct = round(psutil.cpu_percent(interval=None), 1)
+        if cpu_pct <= 0.0:
+            cpu_pct = round(psutil.cpu_percent(interval=0.08), 1)
         mem = psutil.virtual_memory()
         mem_used_gb = round((mem.total - mem.available) / (1024 ** 3), 1)
         mem_total_gb = round(mem.total / (1024 ** 3), 1)
