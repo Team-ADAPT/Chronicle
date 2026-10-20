@@ -52,11 +52,16 @@ class ChroniclePipeline:
     def _seed_baseline_profiles(self) -> None:
         """Establish baseline profiles from initial live host process inspection."""
         try:
-            initial_procs = self.collector.sample_active_processes(limit=40)
+            initial_procs = self.collector.sample_active_processes(limit=50)
             for p in initial_procs:
                 comm = p["comm"]
                 prof = ProcessProfile(comm=comm, user=p["user"])
-                prof.update(cpu=p["cpu"], mem=p["mem"], syscalls=p["syscalls"], event_type="sys_sample")
+                cpu = p["cpu"]
+                mem = p["mem"]
+                sysc = p["syscalls"]
+                prof.update(cpu=cpu, mem=mem, syscalls=sysc, event_type="sys_sample")
+                prof.update(cpu=max(0.0, cpu * 0.7), mem=mem * 0.98, syscalls=max(10, int(sysc * 0.95)), event_type="sys_sample")
+                prof.update(cpu=cpu * 1.3 + 1.5, mem=mem * 1.02 + 10.0, syscalls=int(sysc * 1.1 + 15), event_type="sys_sample")
                 self.profiles[comm] = prof
         except Exception as exc:
             logger.debug("Baseline profile initialization: %s", exc)
