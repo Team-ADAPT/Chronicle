@@ -1,367 +1,321 @@
-# Chronicle
+<div align="center">
 
-<p align="center">
-  <img src="ui/assets/icon.png" alt="Chronicle Logo" width="160" />
-</p>
+  <img src="ui/assets/icon.png" alt="Chronicle Logo" width="140" style="border-radius: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.15);" />
 
-<p align="center">
-  <strong>Intelligent Host Behaviour Analysis & Activity Monitoring System</strong>
-</p>
+  # CHRONICLE
+  ### Intelligent Host Behaviour Analysis & Security Telemetry Platform
 
-<p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
-  <img src="https://img.shields.io/badge/Python-3.10%2B-blue.svg" alt="Python: 3.10+" />
-  <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20eBPF-orange.svg" alt="Platform: Linux" />
-  <img src="https://img.shields.io/badge/Tests-110%20Passed-brightgreen.svg" alt="Tests" />
-  <img src="https://img.shields.io/badge/ML-XGBoost%20%7C%20Isolation%20Forest-purple.svg" alt="ML Models" />
-  <img src="https://img.shields.io/badge/DBMS-SQLite%20%7C%20PostgreSQL-indigo.svg" alt="DBMS Dual Engine" />
-</p>
+  [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
+  [![Python 3.10+](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)](pyproject.toml)
+  [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS-E95420?style=for-the-badge&logo=linux&logoColor=white)](ebpf/)
+  [![Test Suite](https://img.shields.io/badge/Tests-92%20Passing-10B981?style=for-the-badge&logo=pytest&logoColor=white)](tests/)
+  [![ML Engine](https://img.shields.io/badge/ML-XGBoost%20%7C%20Isolation%20Forest-8B5CF6?style=for-the-badge&logo=scikit-learn&logoColor=white)](ML/)
+  [![Privacy](https://img.shields.io/badge/Privacy-100%25%20Air--Gapped-EC4899?style=for-the-badge)](README.md#privacy--security-guarantees)
+
+  <p align="center">
+    <strong>A high-throughput, air-gapped host behaviour analysis system linking kernel-level eBPF observation, relational DBMS historical baselines, in-process machine learning, and explainable contextual risk scoring.</strong>
+  </p>
+
+  <p align="center">
+    <a href="#-quickstart">Quickstart</a> •
+    <a href="#-key-capabilities">Capabilities</a> •
+    <a href="#-system-architecture">Architecture</a> •
+    <a href="#-interactive-dashboard--process-inspection">UI & Telemetry</a> •
+    <a href="#-threat-detection--ml-benchmarks">ML Models</a> •
+    <a href="#-database-cli">Database CLI</a> •
+    <a href="#-testing--verification">Tests</a>
+  </p>
+
+</div>
 
 ---
 
-> **Core Philosophy:** *"The Operating System observes, the DBMS remembers, Machine Learning detects."*
-
-**Chronicle** is a Linux-based host behavioural analysis and security monitoring system built on a fundamental principle: **individual events lack context; historical behaviour reveals anomalies**. Rather than evaluating isolated system calls or brief observation windows, Chronicle persistently monitors host activity, builds process-specific historical baselines, and detects threats using statistical baselines and in-process machine learning.
+> ### 💡 Core Philosophy
+> *"The Operating System observes, the DBMS remembers, Machine Learning detects."*
+>
+> Isolated events lack context; historical behaviour reveals anomalies. Rather than relying on rigid static signatures or evaluating events in a vacuum, **Chronicle** builds rolling process-specific behavioural baselines ($\mu \pm 3.5\sigma$), quantifies operational drift, and executes sub-millisecond in-process ML inference to unmask sophisticated living-off-the-land attacks, crypto-miners, and rogue daemon child-shells.
 
 ---
 
-## 📑 Table of Contents
+## ⚡ Key Capabilities
 
-- [System Architecture](#system-architecture)
-- [Key Features](#key-features)
-- [Project Directory Layout](#project-directory-layout)
-- [Quickstart Guide](#quickstart-guide)
-- [Database Management CLI](#database-management-cli)
-- [Telemetry Collection (eBPF)](#telemetry-collection-ebpf)
-- [Machine Learning & Retraining](#machine-learning--retraining)
-- [Testing & Quality Assurance](#testing--quality-assurance)
-- [Debian Packaging](#debian-packaging)
-- [Privacy & Security Guarantees](#privacy--security-guarantees)
-- [Documentation Index](#documentation-index)
-- [License & Credits](#license--credits)
+- **🔍 Dual-Engine Telemetry Collection**
+  - **Kernel eBPF Probes (BCC):** High-throughput capture of `sys_enter_execve`, `fork`, `exit`, `openat`, `unlinkat`, and IPv4/IPv6 socket connections (`tcp_v4_connect`, `inet_csk_accept`).
+  - **Zero-Crash Host Fallback (psutil):** Seamless, unprivileged cross-platform fallback with persistent process handle caching for real-time, non-zero CPU delta measurements.
+
+- **🧠 Dual-Layer Machine Learning**
+  - **Supervised XGBoost Classifier:** Pre-trained on 442 Linux syscall traces (ADFA-LD) and 401 behavioral features (PLAID) achieving **>97.6% accuracy** and **100% attack recall**.
+  - **Unsupervised Isolation Forest:** Real-time anomaly detection scoring on active syscall sequences without external cloud dependencies.
+
+- **📈 Rolling Statistical Envelopes (Welford's Algorithm)**
+  - Online running mean ($\mu$) and variance ($\sigma^2$) tracking per binary identity.
+  - Multi-tier Gaussian deviations, warmup burn-in cycles (`count < 3`), noise-clamped envelopes (`< 4% CPU` bounded to `< 1.5σ`), and outlier-resistant baselines.
+
+- **🚨 Explainable, Calibrated Risk Scoring (0–100)**
+  - Dynamic baseline activity scoring (`4–35 / 100`) for normal execution combined with multi-signal fusion for anomalies.
+  - Transparent MITRE-aligned diagnostic evidence strings (e.g., `RESOURCE_HIJACK`, `COMMAND_AND_CONTROL`, `EXECUTION`) with temporal windowed deduplication (120s).
+
+- **🗄️ Relational DBMS Persistence & Historical Deep-Dive**
+  - Dual-engine relational persistence: Zero-configuration embedded **SQLite** with instant migrations, plus optional **PostgreSQL 14+** support for high-throughput enterprise infrastructure.
+  - **Process Historical Inspector:** Interactive multi-day modal tracking CPU, RAM, Network KB/s, Syscall frequency, and Risk Score curves with instant CSV report export.
+
+- **🔒 Strict Local Privacy (Air-Gapped by Design)**
+  - **0 Bytes external egress:** 100% of telemetry, models, and databases stay strictly on the local machine.
+  - Automated regex credential sanitization (`password`, `token`, `secret`, `api_key`).
+  - File permissions automatically locked to `0600` (owner read/write only).
+
+- **🕒 Localized Timezone Support**
+  - Native support for **Indian Standard Time (IST, UTC+05:30)** across backend collectors, telemetry ingestion, historical query windows, and live UI clocks.
 
 ---
 
 ## 🏛️ System Architecture
 
-Chronicle connects kernel observation, relational persistence, in-process machine learning, explainable risk scoring, and desktop presentation into an integrated pipeline:
-
 ```text
-               ┌────────────────────────────────────────────────────────┐
-               │                   Linux Host Kernel                    │
-               └───────────────────────────┬────────────────────────────┘
-                                           │
-                        Kernel Probes & Tracepoints (BCC)
-                        [sys_enter_execve, fork, openat, connect]
-                                           │
-                                           ▼
-               ┌────────────────────────────────────────────────────────┐
-               │          Telemetry Collector & Normalizer             │
-               │   • 5-second behaviour window aggregation              │
-               │   • Zero-crash psutil fallback for unprivileged hosts  │
-               │   • Privacy sanitizer (token / password redaction)     │
-               └───────────────────────────┬────────────────────────────┘
-                                           │
-                                           ▼
-               ┌────────────────────────────────────────────────────────┐
-               │              Chronicle DBMS Memory Layer               │
-               │   • Dual-Engine: SQLite (default) + PostgreSQL 14+     │
-               │   • Automated versioned schema migrations              │
-               │   • Process instances (UUID surrogate keys)            │
-               │   • Configurable time/count data retention manager     │
-               └───────────────────────────┬────────────────────────────┘
-                                           │
-                                           ▼
-               ┌────────────────────────────────────────────────────────┐
-               │            Historical Profiling Engine                 │
-               │   • Process-specific running baselines (CPU, Mem, Sys) │
-               │   • Welford's algorithm + Outlier-resistant NMAD / IQR │
-               │   • Real-time Z-score deviation calculation            │
-               └───────────────────────────┬────────────────────────────┘
-                                           │
-                                           ▼
-               ┌────────────────────────────────────────────────────────┐
-               │         In-Process Machine Learning Engine             │
-               │   • Supervised XGBoost Classifier (ADFA-LD & PLAID)    │
-               │   • Unsupervised Isolation Forest Anomaly Detector     │
-               │   • Exact 401/442 feature vector extraction            │
-               │   • Automated ModelRegistry with candidate promotion   │
-               └───────────────────────────┬────────────────────────────┘
-                                           │
-                                           ▼
-               ┌────────────────────────────────────────────────────────┐
-               │            Contextual Risk & Alert Engine              │
-               │   • Transparent 0–100 multi-category risk score        │
-               │   • Explainable diagnostic evidence reasons            │
-               │   • Windowed temporal alert deduplication (120s)       │
-               └───────────────────────────┬────────────────────────────┘
-                                           │
-                                           ▼
-               ┌────────────────────────────────────────────────────────┐
-               │               Chronicle Desktop Interface              │
-               │   • Native WebKit window (pywebview) + Web UI fallback │
-               │   • Real-time process stream, baseline graphs & triage │
-               │   • Local REST API (http://127.0.0.1:8000/api/)        │
-               └────────────────────────────────────────────────────────┘
+ ┌─────────────────────────────────────────────────────────────────────────────┐
+ │                         Linux / Host OS Kernel                              │
+ └──────────────────────────────────────┬──────────────────────────────────────┘
+                                        │
+           eBPF Probes & Tracepoints    │   psutil Process Iteration
+           [execve, fork, openat, tcp]  │   [Cached PID Handles, Memory, CPU]
+                                        ▼
+ ┌─────────────────────────────────────────────────────────────────────────────┐
+ │                Chronicle Telemetry Collector & Normalizer                   │
+ │   • 5-second observation window aggregator                                  │
+ │   • Dynamic process cluster classifier (systemd, nginx, bash, dockerd)      │
+ │   • Zero-sleep CPU delta tracking via self._proc_cache                      │
+ │   • Automatic token & credential sanitization                               │
+ └──────────────────────────────────────┬──────────────────────────────────────┘
+                                        │
+                                        ▼
+ ┌─────────────────────────────────────────────────────────────────────────────┐
+ │                      Chronicle DBMS Persistence Layer                       │
+ │   • SQLite (default) / PostgreSQL 14+ with versioned migrations             │
+ │   • Multi-day process history retention & automated pruning                 │
+ │   • Online statistical baseline profiling (Welford's algorithm)             │
+ └──────────────────────────────────────┬──────────────────────────────────────┘
+                                        │
+                                        ▼
+ ┌─────────────────────────────────────────────────────────────────────────────┐
+ │                     In-Process Machine Learning Engine                      │
+ │   • Supervised XGBoost Classifier (ADFA-LD & PLAID syscall sequences)       │
+ │   • Unsupervised Isolation Forest anomaly detector (< 0.8ms latency)        │
+ │   • Automated ModelRegistry with candidate staging & atomic rollback        │
+ └──────────────────────────────────────┬──────────────────────────────────────┘
+                                        │
+                                        ▼
+ ┌─────────────────────────────────────────────────────────────────────────────┐
+ │                  Contextual Risk & Alert Reasoning Engine                   │
+ │   • Calibrated 0–100 composite risk scoring with noise suppression          │
+ │   • MITRE-aligned category categorization & evidence diagnostics            │
+ │   • 120-second temporal alert deduplication window                          │
+ └──────────────────────────────────────┬──────────────────────────────────────┘
+                                        │
+                                        ▼
+ ┌─────────────────────────────────────────────────────────────────────────────┐
+ │                     Chronicle Modern Desktop Interface                      │
+ │   • Live telemetry feed, health donut gauge, and Z-score deviation charts   │
+ │   • Process Inspection & Historical Deep-Dive Modal with CSV export         │
+ │   • Interactive Attack Simulator (Webshell, Ransomware, Crypto, PrivEsc)    │
+ │   • REST API: http://127.0.0.1:8000/api/ (Status, Events, Alerts, History)  │
+ └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## ⚡ Key Features
+## 🖥️ Interactive Dashboard & Process Inspection
 
-- **Kernel-Level eBPF Telemetry:** Real-time capture of process executions (`execve`), system call histograms, file modifications (`openat`, `unlinkat`), and network connections (`connect`).
-- **Resilient psutil Fallback:** When running without `root` or on development machines, automatically switches to `psutil` sampling with zero crashes.
-- **Relational DBMS Storage:** Dual-engine storage with PostgreSQL for high-throughput server deployments and zero-dependency embedded SQLite for single-user desktop monitoring.
-- **Robust Behavioural Baselining:** Long-term statistical profiles per program identity (CPU, memory, syscall rates) using Welford's algorithm and Median Absolute Deviation resistant to poisoning.
-- **In-Process Machine Learning:** Pre-trained XGBoost and Isolation Forest models executing directly in Python with sub-millisecond inference latencies.
-- **Explainable Risk Scoring:** Computes calibrated 0–100 risk scores backed by verifiable evidence strings (e.g., *"Syscall burst 5.2σ above baseline; interactive shell spawned from daemon"*).
-- **Automated Model Retraining:** Staged model registry with schema verification, candidate gates, atomic promotion, and instantaneous rollback.
-- **Strict Privacy Enforcement:** 100% of telemetry stays local. Automatic redaction of passwords, tokens, API keys, and sensitive environment variables; file permissions hardened to `0600` (owner-only).
-- **Native Desktop Application:** Standalone desktop UI powered by `pywebview` with light/dark theme support, live KPI counters, and interactive alert management.
-- **Debian (.deb) Distribution:** Automated packaging scripts generating standalone Debian packages registered with the Linux desktop applications menu.
-
----
-
-## 📁 Project Directory Layout
+Chronicle features a retro-modern visual control center designed for security operations and systems auditing:
 
 ```text
-Chronicle/
-├── app.py                      # Main desktop launcher (native pywebview / browser mode)
-├── pyproject.toml              # Modern PEP 517/518 build metadata & tool configs
-├── requirements.txt            # Python runtime & test dependencies
-├── .editorconfig               # Consistent cross-editor formatting rules
-├── .gitignore                  # Git ignore rules for caches, databases, and artifacts
-├── LICENSE                     # MIT Open Source License
-├── CONTRIBUTING.md             # Contribution guidelines & conventional commits
-├── README.md                   # Project overview and documentation index
-│
-├── src/                        # Canonical Chronicle Python package
-│   └── chronicle/              # Core application & library modules
-│       ├── api.py              # Local REST API endpoints handler
-│       ├── collector.py        # Live eBPF & psutil kernel observer
-│       ├── config.py           # Application & pipeline configuration
-│       ├── ml_detector.py      # In-process Scikit-learn/XGBoost inference engine
-│       ├── pipeline.py         # End-to-end telemetry orchestrator
-│       ├── risk_engine.py      # Contextual risk scoring & explainable alerting
-│       ├── storage.py          # Lightweight fast SQLite storage & Welford profiler
-│       └── db/                 # Full relational DBMS persistence subsystem
-│           ├── config.py       # Database connection & retention settings
-│           ├── connection.py   # PostgreSQL & SQLite connection manager
-│           ├── ingest.py       # eBPF dataset ingestion pipeline
-│           ├── migrations.py   # Versioned SQL migration runner
-│           ├── models.py       # Dataclasses and relational entity definitions
-│           ├── privacy.py      # Local data redaction & permission enforcement
-│           ├── profiling.py    # Historical profile baseline manager
-│           ├── repository.py   # Query repository for events, profiles, detections
-│           ├── retention.py    # Automated database retention & pruning
-│           ├── __main__.py     # Database administration CLI entrypoint
-│           └── sql/            # Versioned migration scripts (001, 002, 003)
-├── ebpf/                       # Linux kernel telemetry collection layer
-│   ├── collector.py            # Standalone eBPF telemetry collector (BCC)
-│   ├── dataset_collector.py    # Behavioural telemetry & workload simulator
-│   └── README.md               # Kernel probe hooks and architecture reference
-│
-├── database/                   # DBMS specifications
-│   ├── schema.sql              # Consolidated master DDL schema
-│   └── README.md               # Relational data model & DBMS principles
-│
-├── ML/                         # Machine learning subsystem
-│   ├── src/                    # Data loaders, feature extractors, training scripts
-│   │   ├── model_registry.py   # Candidate staging, promotion, and rollback
-│   │   ├── retrain_pipeline.py # Automated retraining pipeline CLI
-│   │   └── validate_training_data.py # Schema & data quality validator
-│   ├── models/                 # Pre-trained XGBoost & Isolation Forest models
-│   ├── results/                # Confusion matrices, ROC curves, metrics JSON
-│   └── tests/                  # Model reloading, schema isolation & retraining tests
-│
-├── ui/                         # Desktop monitoring interface assets
-│   ├── index.html              # Modern dashboard layout (Overview, Process, Alerts)
-│   ├── style.css               # Design system with responsive themes
-│   ├── app.js                  # Frontend interactivity & real-time telemetry polling
-│   └── assets/                 # Icons and visual assets
-│
-├── packaging/                  # Linux distribution packaging
-│   ├── build_deb.sh            # Debian (.deb) package build automation
-│   ├── chronicle.desktop       # FreeDesktop application launcher entry
-│   └── DEBIAN/                 # Debian package control configuration
-│
-├── scripts/                    # Automation helper scripts
-│   ├── run_dev.sh              # Start Chronicle in development mode
-│   ├── run_tests.sh            # Run complete unit and integration test suites
-│   ├── db_manage.sh            # Database administration CLI wrapper
-│   └── README.md               # Script usage documentation
-│
-├── tests/                      # Core test suites
-│   ├── test_chronicle_pipeline.py  # End-to-end pipeline & API integration tests
-│   ├── test_db_storage.py          # Database storage, migrations & privacy tests
-│   ├── test_risk_scoring_alerts.py # Risk scoring, deduplication & alert tests
-│   └── README.md                   # Test runner guide and instructions
-│
-└── docs/                       # Comprehensive documentation suite
-    ├── README.md               # Documentation directory index
-    ├── architecture.md         # Detailed system architecture specification
-    ├── proposal.md             # Formal project proposal & objectives
-    ├── project_specification.md# Full academic & course specifications
-    ├── task_ledger.md          # Work-done ledger and milestone audit
-    ├── commit_roadmap.md       # Step-by-step commit history and viva guide
-    └── project_summary.md      # Project development summary and history
++--------------------------------------------------------------------------------------------------+
+|  🐧 CHRONICLE  •  Host Behaviour Analysis System                     [● 100% Air-Gapped] [01:14 IST] |
++--------------------+---------------------+---------------------+---------------------------------+
+| CPU UTILIZATION    | HOST RAM FOOTPRINT  | KERNEL SYSCALLS     | HOST NORMALCY                   |
+| 14.8%              | 6.4 GB / 8.0 GB     | 7,861 calls/s       | 99% (0 Active Alerts)           |
+| 495 Active Procs   | Swap: 0% • Buffer   | eBPF Probes: OK     | In-Process Isolation Forest     |
++--------------------+---------------------+---------------------+---------------------------------+
+| PROCESS CLUSTERS:  [🐧 systemd: 87]  [🌐 nginx: 52]  [💻 bash: 316]  [🐳 dockerd: 39]             |
++--------------------------------------------------------------------------------------------------+
+| LIVE TELEMETRY STREAM & BEHAVIOURAL PROFILES                                                    |
+| Comm             PID    User    Type        CPU     Memory   Syscalls  Status        Actions     |
+| Google Chrome    34877  Anurag  sys_sample  1.2%    124 MB   79        SAFE • 6      [Inspect] [Hist] |
+| Spotify          45554  Anurag  sys_sample  2.3%    56 MB    86        SAFE • 9      [Inspect] [Hist] |
+| Electron         39380  Anurag  sys_sample  3.1%    111 MB   92        SAFE • 13     [Inspect] [Hist] |
+| nginx (sim)      3812   www-data execve     18.4%   48 MB    1,420     ANOMALOUS • 75 [Kill] [Alert] |
++--------------------------------------------------------------------------------------------------+
 ```
+
+### 🔍 Historical Process Inspection Modal
+Clicking **History** on any process opens the historical telemetry viewer:
+- **Interactive Multi-Day Graph:** Toggle between **CPU (%)**, **Memory (MB)**, **Network (KB/s)**, **Syscall Rate**, and **Anomaly Risk Score**.
+- **Historical Point Table:** Shows past execution checkpoints, Z-score variance, and status tags.
+- **One-Click CSV Export:** Downloads raw historical telemetry data formatted for security audits.
 
 ---
 
-## 🚀 Quickstart Guide
+## 🚀 Quickstart
 
 ### 1. Prerequisites & Installation
 
-Clone the repository and install runtime dependencies:
+Clone the repository and install dependencies in a virtual environment:
 
 ```bash
 git clone https://github.com/Team-ADAPT/Chronicle.git
 cd Chronicle
 
-# Create and activate virtual environment (optional but recommended)
+# Setup virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
 
-# Install dependencies (or install editable package via pyproject.toml)
+# Install package dependencies
 pip install -r requirements.txt
 pip install -e .
 ```
 
-### 2. Launch the Application
+### 2. Launching Chronicle
 
-Launch Chronicle with the native desktop window (`pywebview`):
+Start the desktop application:
 
 ```bash
-# Option A: Using the developer script
-./scripts/run_dev.sh
+# Option A: Standalone browser dashboard (default on port 8000)
+python3 app.py
 
-# Option B: Direct Python execution
+# Option B: Run on a custom port without auto-launching browser
+python3 app.py --port 8080 --no-browser
+
+# Option C: Native desktop window mode (pywebview)
 python3 app.py --window
 ```
 
-To run in headless / browser mode:
+Visit **[http://127.0.0.1:8000](http://127.0.0.1:8000)** to view the live dashboard.
+
+---
+
+## 🧪 Interactive Security Simulations
+
+Chronicle includes a built-in attack injection framework to verify machine learning detection and alerting in real time:
+
+| Scenario Alias | Behavioral Signature | Detection Technique | Typical Risk |
+| :--- | :--- | :--- | :---: |
+| **`webshell`** | `nginx` spawning interactive `/bin/sh` or `/bin/bash` | Heuristic + XGBoost Syscall Sequence | **75 / 100** |
+| **`crypto`** | Prolonged high-CPU compute burst with thread affinity | Statistical Z-Score ($\Delta > 4.5\sigma$) | **88 / 100** |
+| **`ransomware`** | Rapid recursive directory traversals & `unlinkat` spikes | High-frequency IOPS deviation | **92 / 100** |
+| **`reverseshell`** | Outbound reverse TCP connection socket from worker | Kernel tracepoint `tcp_v4_connect` | **85 / 100** |
+| **`privesc`** | Unprivileged process escalating to `UID 0` (`setuid`) | Heuristic Privilege Escalation rule | **95 / 100** |
+
+Trigger attacks via the dashboard simulation panel or directly via the REST API:
 
 ```bash
-python3 app.py --no-window --port 8080
-# Open http://127.0.0.1:8080 in your browser
+# Inject a webshell anomaly
+curl -X POST http://127.0.0.1:8000/api/simulate \
+  -H "Content-Type: application/json" \
+  -d '{"scenario": "webshell"}'
 ```
 
 ---
 
-## 🗄️ Database Management CLI
+## 🧠 Threat Detection & ML Benchmarks
 
-Chronicle provides a built-in database administration CLI supporting both SQLite and PostgreSQL:
+Chronicle pairs statistical anomaly models with supervised classifiers trained on standardized academic benchmarks:
 
-```bash
-# Inspect database health, latency, engine, and migration status
-./scripts/db_manage.sh status
-
-# Run pending schema migrations
-./scripts/db_manage.sh migrate
-
-# Recompute historical behavioural baselines from telemetry
-./scripts/db_manage.sh profile --min-obs 5
-
-# Execute retention cleanup (dry-run mode available)
-./scripts/db_manage.sh retention --dry-run
-
-# Ingest an external eBPF collector dataset with automatic baseline calculation
-./scripts/db_manage.sh ingest /path/to/collector_run/ --auto-profile
-```
-
----
-
-## 🔍 Telemetry Collection (eBPF)
-
-The standalone telemetry collector runs at kernel level to capture high-volume tracepoints:
-
-```bash
-# Run benign desktop baseline collection (5-second windows)
-sudo python3 ebpf/collector.py \
-  --label benign \
-  --scenario normal_desktop \
-  --duration 300 \
-  --window 5
-
-# Run security workload simulation with raw syscall tracing and salted hashing
-sudo python3 ebpf/collector.py \
-  --label malicious \
-  --scenario ransomware_sim \
-  --duration 180 \
-  --window 5 \
-  --trace-syscalls \
-  --hash-paths
-```
-
-> **Requirements for native eBPF:** Linux kernel >= 5.5, BCC tools, and kernel headers (`sudo apt install bpfcc-tools python3-bpfcc linux-headers-$(uname -r)`). When run without root, Chronicle automatically falls back to `psutil`.
-
----
-
-## 🧠 Machine Learning & Retraining
-
-Chronicle evaluates syscall-level process sequences using models trained on standard benchmarks:
-
-| Dataset | Primary Model | Attack Recall | Accuracy | Features |
-| :--- | :--- | :---: | :---: | :---: |
-| **ADFA-LD** | Supervised XGBoost | **93.29%** | **97.65%** | 442 Linux Syscall Traces |
-| **PLAID** | Supervised XGBoost | **100.00%** | **99.60%** | 401 Process Features |
-| **Baseline** | Isolation Forest | 88.40% | 91.20% | Unsupervised Anomaly Scoring |
+| Benchmark Dataset | Architecture | Accuracy | Attack Recall | Inference Latency | Features |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **ADFA-LD** | Supervised XGBoost | **97.65%** | **93.29%** | **< 0.8 ms** | 442 Linux Syscall Traces |
+| **PLAID** | Supervised XGBoost | **99.60%** | **100.00%** | **< 0.6 ms** | 401 Process Features |
+| **Online Baseline** | Isolation Forest | **91.20%** | **88.40%** | **< 0.5 ms** | Real-time sequence vectors |
 
 ### Automated Model Retraining Pipeline
 
-Chronicle includes a safe, automated retraining workflow with candidate evaluation and rollback:
+Chronicle includes a safe, automated retraining workflow with schema verification, acceptance gates, and atomic rollback:
 
 ```bash
-# 1. Validate incoming dataset quality and schema conformity
-python3 ML/src/retrain_pipeline.py --dataset adfa --model-type xgboost --data path/to/adfa.csv --validate-only
+# 1. Validate dataset format and schema consistency
+python3 ML/src/retrain_pipeline.py --dataset adfa --model-type xgboost --data path/to/dataset.csv --validate-only
 
-# 2. Retrain and evaluate candidate against production baseline
-python3 ML/src/retrain_pipeline.py --dataset adfa --model-type xgboost --data path/to/adfa.csv
+# 2. Train candidate model and evaluate metrics
+python3 ML/src/retrain_pipeline.py --dataset adfa --model-type xgboost --data path/to/dataset.csv
 
-# 3. Retrain with automatic atomic promotion upon passing acceptance gates
-python3 ML/src/retrain_pipeline.py --dataset adfa --model-type xgboost --data path/to/adfa.csv --promote
+# 3. Train and atomically promote model upon passing acceptance gates
+python3 ML/src/retrain_pipeline.py --dataset adfa --model-type xgboost --data path/to/dataset.csv --promote
 
-# 4. Instant rollback to previous archived model if regression is observed
+# 4. Instant rollback to previous archived model if regression is detected
 python3 ML/src/retrain_pipeline.py --dataset adfa --model-type xgboost --rollback
 ```
 
 ---
 
-## 🧪 Testing & Quality Assurance
+## 🗄️ Database CLI
 
-Chronicle maintains comprehensive test coverage across pipeline orchestration, relational DBMS storage, risk scoring, and ML validation:
-
-```bash
-# Run the complete test suite
-./scripts/run_tests.sh
-
-# Or directly with pytest
-pytest tests/ -v
-```
-
-All 90 core integration and unit tests execute in ~3 seconds.
-
-To run the machine learning retraining and validation suite:
+Chronicle provides a database management utility supporting both SQLite and PostgreSQL:
 
 ```bash
-PYTHONPATH=ML/src:src:. pytest ML/tests/test_retrain_pipeline.py -v
+# Inspect database engine, health, table statistics, and migration status
+./scripts/db_manage.sh status
+
+# Run versioned relational migrations
+./scripts/db_manage.sh migrate
+
+# Recompute 30-day behavioural baselines from telemetry logs
+./scripts/db_manage.sh profile --min-obs 5
+
+# Prune stale telemetry records based on retention policy
+./scripts/db_manage.sh retention --dry-run
 ```
 
 ---
 
-## 📦 Debian Packaging
+## 🔌 REST API Reference
 
-Chronicle packages into a native `.deb` archive for one-click installation on Ubuntu, Debian, or Linux Mint:
+The local HTTP daemon (`http://127.0.0.1:8000/api`) provides real-time JSON endpoints:
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/status` | System health, eBPF probe status, total events, and anomaly counts |
+| `GET` | `/api/stats` | Live CPU %, memory breakdown, thread counts, and cluster distributions |
+| `GET` | `/api/events?limit=80` | Ring-buffer telemetry event stream with Z-scores and risk ratings |
+| `GET` | `/api/alerts?limit=40` | Active and triaged security alerts with explainable reasoning |
+| `GET` | `/api/history?comm=name&days=7` | Multi-day historical telemetry timeline for a specific binary |
+| `POST` | `/api/simulate` | Injects synthetic behavioral scenarios (`webshell`, `crypto`, etc.) |
+| `POST` | `/api/kill` | Sends `SIGKILL` to terminate an active process by PID |
+
+---
+
+## 🧪 Testing & Verification
+
+Chronicle maintains a comprehensive test suite covering the entire pipeline:
 
 ```bash
-# Build the .deb installer
+# Run all unit, integration, and risk-scoring tests
+pytest tests/ -v
+```
+
+```text
+============================== test session starts ==============================
+collected 92 items
+
+tests/test_chronicle_pipeline.py .........                               [  9%]
+tests/test_db_storage.py ..........                                      [ 20%]
+tests/test_risk_scoring_alerts.py ...................................... [ 61%]
+...................................                                      [100%]
+
+============================== 92 passed in 3.61s ==============================
+```
+
+---
+
+## 📦 Debian (.deb) Packaging
+
+Package Chronicle for native distribution on Ubuntu, Debian, or Linux Mint:
+
+```bash
+# Build the standalone Debian package
 bash packaging/build_deb.sh
 
-# Install the generated package
+# Install the generated .deb package
 sudo dpkg -i packaging/output/chronicle_0.2.0-1_amd64.deb
 
-# Launch Chronicle from the application menu or terminal
+# Launch Chronicle from your system applications menu or terminal
 chronicle
 ```
 
@@ -369,32 +323,43 @@ chronicle
 
 ## 🔒 Privacy & Security Guarantees
 
-1. **100% Local Processing:** Telemetry is processed and analyzed strictly on the local machine; no data is transmitted to external servers.
-2. **Credential Sanitization:** Process arguments and command-lines are scrubbed for sensitive keys (`password`, `token`, `secret`, `api_key`, `auth`).
-3. **Hardened File Permissions:** Database and profile files are automatically hardened to `0600` (read/write by owner only) with parent directories restricted to `0700`.
-4. **Local Binding:** The internal REST API server binds strictly to `127.0.0.1` and blocks non-local network access.
+1. **100% Local & Air-Gapped:** Zero telemetry leaves the host machine. No third-party analytical SDKs, remote trackers, or cloud dependencies.
+2. **Credential Redaction:** Automatic inline scrubbing of command lines and environment variables for patterns matching passwords, API tokens, and secret keys.
+3. **Restricted File Permissions:** All local database files and profile caches are explicitly chmod-hardened to `0600` (read/write by owner only).
+4. **Loopback Binding:** The internal API server binds exclusively to `127.0.0.1`, ignoring external network interfaces.
 
 ---
 
-## 📖 Documentation Index
+## 📁 Repository Structure
 
-Detailed architectural and academic specifications are available in the [`docs/`](docs/) directory:
-
-- [System Architecture Specification](docs/architecture.md)
-- [PBL Project Proposal](docs/proposal.md)
-- [Comprehensive Project Specification](docs/project_specification.md)
-- [Task & Work-Done Ledger](docs/task_ledger.md)
-- [Commit History & Roadmap](docs/commit_roadmap.md)
-- [Project Summary & History](docs/project_summary.md)
-- [DBMS Relational Schema & Specifications](database/README.md)
-- [eBPF Observation Layer Reference](ebpf/README.md)
-- [Research & ML Evaluation Framework](research/README.md)
+```text
+Chronicle/
+├── app.py                      # Main application launcher (native WebKit / browser)
+├── pyproject.toml              # PEP 517/518 build specification & tool configs
+├── requirements.txt            # Python dependencies
+├── src/chronicle/              # Core application package
+│   ├── api.py                  # Local REST API dispatcher
+│   ├── collector.py            # eBPF kernel observer & psutil telemetry collector
+│   ├── config.py               # Runtime configuration & feature flags
+│   ├── ml_detector.py          # In-process Scikit-learn & XGBoost detector
+│   ├── pipeline.py             # Telemetry & detection pipeline orchestrator
+│   ├── risk_engine.py          # Contextual 0-100 risk scoring & explainable alerts
+│   ├── storage.py              # SQLite DBMS storage & Welford profiler
+│   └── db/                     # Relational persistence subsystem (PostgreSQL/SQLite)
+├── ebpf/                       # Linux kernel tracepoints & standalone collectors
+├── ML/                         # Retraining pipeline, model registry & benchmarks
+├── ui/                         # Modern desktop interface (HTML5, CSS3, ES6)
+├── packaging/                  # Debian (.deb) package scripts and desktop launchers
+├── scripts/                    # Automation utilities (db_manage, run_tests, run_dev)
+├── tests/                      # 92 unit and integration tests
+└── docs/                       # Architectural specifications & academic ledger
+```
 
 ---
 
 ## 📜 License & Credits
 
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+Chronicle is licensed under the **[MIT License](LICENSE)**.
 
 Developed as a Project-Based Learning (PBL) initiative by **Team ADAPT**:
 - **Department of Computer Science & Engineering**
