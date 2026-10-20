@@ -177,12 +177,19 @@ class ChroniclePipeline:
             self.recent_events.appendleft(enriched)
             self.total_events_processed += 1
 
-            # 4. Alert Generation (only for scored, non-disabled events)
-            if (
+            # 4. Alert Generation (only for genuine high-risk or heuristic/ML attacks)
+            # Statistical drift alone (Medium risk < 50) is logged as normal telemetry, not a security alert.
+            is_security_alert = (
                 self.config.enable_risk_scoring
                 and scoring_result.eval_status == "evaluated"
-                and (status in ("SUSPICIOUS", "ANOMALOUS") or risk_score >= 40)
-            ):
+                and (
+                    status == "ANOMALOUS"
+                    or risk_score >= 50
+                    or len(heuristics) > 0
+                    or ml_result.get("xgb_attack", False)
+                )
+            )
+            if is_security_alert:
                 self.total_anomalies_detected += 1
                 alert = RiskEngine.create_alert(
                     comm=comm,

@@ -182,6 +182,10 @@ def _infer_activity_category(reasons: List[str]) -> str:
         return "IMPACT"
     if "privilege" in joined or "shell" in joined:
         return "PRIVILEGE_ESCALATION"
+    if "xgboost" in joined or "isolation forest" in joined:
+        return "SUSPICIOUS_ML_ANOMALY"
+    if "baseline" in joined or "envelope" in joined or "rolling mean" in joined:
+        return "RESOURCE_DRIFT"
     return "EXECUTION"
 
 
@@ -386,7 +390,7 @@ class RiskEngine:
                 description=f"Kernel syscall frequency is {sys_z:.1f}σ above rolling mean",
             ))
 
-        base_score += stat_contribution
+        base_score += min(_CAP_STAT, stat_contribution)
 
         # ── 2. ML anomaly detection component ────────────────────────────
         ml_contribution = 0.0

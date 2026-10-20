@@ -521,7 +521,8 @@ class TelemetryCollector:
                 # Derive typical baseline sequence for observed program
                 seq = ["read", "write", "futex", "close", "read"]
 
-            syscall_count = max(8, int(item["cpu"] * 25 + len(seq) * 12))
+            base_syscalls = 35 + len(seq) * 8
+            syscall_count = max(10, int(base_syscalls + (item["cpu"] * 5.0)))
             
             # Estimate network bandwidth based on daemon category and activity
             if any(k in item["name"].lower() for k in ("nginx", "curl", "chrome", "firefox", "sshd", "ssh", "dockerd", "postgres", "node", "socket")):
