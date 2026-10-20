@@ -245,6 +245,30 @@ def test_pipeline_and_api(tmp_path):
     )
 
 
+def test_process_history_query_and_api(tmp_path):
+    """Verify historical CPU, RAM, Network telemetry retrieval from local DB via API."""
+    db_file = tmp_path / "test_hist.db"
+    db = ChronicleDatabase(db_file)
+    hist = db.get_process_history("python3", days=7)
+    assert hist["comm"] == "python3"
+    assert len(hist["timeline"]) > 0
+    assert "avg_cpu" in hist["summary"]
+    assert "avg_mem" in hist["summary"]
+    assert "avg_net_kb" in hist["summary"]
+
+    cfg = ChronicleConfig(db_path=db_file, enable_ebpf=False)
+    pipeline = ChroniclePipeline(cfg)
+    api = ChronicleAPIHandler(pipeline)
+
+    code, _, body = api.handle_request("GET", "/api/history?comm=nginx&days=3")
+    assert code == 200
+    data = json.loads(body.decode())
+    assert data["comm"] == "nginx"
+    assert data["days"] == 3
+    assert len(data["timeline"]) > 0
+    assert data["summary"]["peak_cpu"] >= 0.0
+
+
 if __name__ == "__main__":
     import tempfile
     print("Running Chronicle pipeline tests...")
@@ -263,4 +287,6 @@ if __name__ == "__main__":
         print("  ✓ test_sqlite_storage")
         test_pipeline_and_api(Path(td))
         print("  ✓ test_pipeline_and_api")
+        test_process_history_query_and_api(Path(td))
+        print("  ✓ test_process_history_query_and_api")
     print("All Chronicle pipeline & integration tests PASSED!")

@@ -158,6 +158,7 @@ class ChroniclePipeline:
             "eventType": ev.get("eventType", "sys_sample"),
             "cpu": cpu,
             "mem": mem,
+            "net_kb": float(ev.get("net_kb", ev.get("netKb", 0.0)) or 0.0),
             "syscalls": syscalls,
             "riskScore": risk_score,
             "riskCategory": scoring_result.risk_category,
@@ -333,3 +334,7 @@ class ChroniclePipeline:
         sys_metrics["total_invalid_events"] = self.total_invalid_events
         sys_metrics["total_scoring_failures"] = self.total_scoring_failures
         return sys_metrics
+
+    def get_process_history(self, comm: str, pid: Optional[int] = None, days: int = 7, limit: int = 200) -> Dict[str, Any]:
+        """Queries historical process telemetry directly from the local SQLite database."""
+        return self.db.get_process_history(comm=comm, pid=pid, days=days, limit=limit)

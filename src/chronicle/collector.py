@@ -11,6 +11,7 @@ import logging
 import os
 import platform
 import queue
+import random
 import socket
 import struct
 import sys
@@ -487,6 +488,12 @@ class TelemetryCollector:
                 seq = ["read", "write", "futex", "close", "read"]
 
             syscall_count = max(8, int(item["cpu"] * 25 + len(seq) * 12))
+            
+            # Estimate network bandwidth based on daemon category and activity
+            if any(k in item["name"].lower() for k in ("nginx", "curl", "chrome", "firefox", "sshd", "ssh", "dockerd", "postgres", "node", "socket")):
+                net_rate = round(max(2.0, (item["cpu"] * 6.5) + random.uniform(8.0, 55.0)), 1)
+            else:
+                net_rate = round(max(0.0, (item["cpu"] * 0.8) + random.uniform(0.0, 2.5)), 1)
 
             ev = {
                 "id": f"evt-{uuid.uuid4().hex[:8]}",
@@ -498,6 +505,7 @@ class TelemetryCollector:
                 "eventType": "sys_sample",
                 "cpu": round(item["cpu"], 1),
                 "mem": item["mem"],
+                "net_kb": net_rate,
                 "syscalls": syscall_count,
                 "syscall_sequence": seq,
                 "heuristic_flags": [],
@@ -549,6 +557,7 @@ class TelemetryCollector:
                 "eventType": "execve",
                 "cpu": 18.4,
                 "mem": 48.0,
+                "net_kb": 86.4,
                 "syscalls": 1420,
                 "heuristic_flags": ["interactive_shell_from_daemon"],
                 "seq": ["clone", "execve", "rt_sigaction", "ioctl", "fcntl", "openat", "dup2", "execve", "read", "write"],
@@ -562,6 +571,7 @@ class TelemetryCollector:
                 "eventType": "sched_yield",
                 "cpu": 98.6,
                 "mem": 680.0,
+                "net_kb": 320.5,
                 "syscalls": 84200,
                 "heuristic_flags": ["crypto_mining"],
                 "seq": ["futex", "futex", "sched_yield", "clone", "futex", "mmap", "mprotect", "futex", "sched_yield"],
@@ -575,6 +585,7 @@ class TelemetryCollector:
                 "eventType": "unlinkat",
                 "cpu": 44.2,
                 "mem": 310.0,
+                "net_kb": 8.5,
                 "syscalls": 24500,
                 "heuristic_flags": ["mass_file_traversal"],
                 "seq": ["openat", "getdents64", "openat", "read", "write", "unlinkat", "openat", "read", "unlinkat"],
@@ -588,6 +599,7 @@ class TelemetryCollector:
                 "eventType": "socket_connect",
                 "cpu": 8.5,
                 "mem": 18.0,
+                "net_kb": 248.0,
                 "syscalls": 1850,
                 "heuristic_flags": ["reverse_shell_socket"],
                 "seq": ["socket", "connect", "dup2", "dup2", "dup2", "execve", "sendto", "recvfrom", "close"],
@@ -601,6 +613,7 @@ class TelemetryCollector:
                 "eventType": "setuid",
                 "cpu": 12.0,
                 "mem": 34.0,
+                "net_kb": 4.2,
                 "syscalls": 3200,
                 "heuristic_flags": ["privilege_escalation"],
                 "seq": ["setuid", "setgid", "prctl", "execve", "openat", "read", "capget", "capset", "execve"],

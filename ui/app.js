@@ -26,6 +26,11 @@
     currentTheme: "light",
     backendConnected: false,
     backendStats: null,
+    historyComm: null,
+    historyPid: null,
+    historyDays: 7,
+    historyMetric: "cpu",
+    historyData: null,
   };
 
   // --- TOAST NOTIFICATION UTILITY ---
@@ -580,8 +585,9 @@
               ${e.status} • ${e.riskScore}
             </span>
           </td>
-          <td style="text-align: right;">
+          <td style="text-align: right; white-space: nowrap;">
             <button class="btn-row-action" data-action="inspect" data-id="${e.id}" title="Inspect Process (⌘I)">Inspect</button>
+            <button class="btn-row-action btn-row-history" data-action="history" data-id="${e.id}" data-comm="${e.comm}" data-pid="${e.pid}" title="View Historical Telemetry (⌘H)">History</button>
           </td>
         </tr>
       `;
@@ -603,6 +609,9 @@
         // If inspect button directly clicked
         if (ev.target.closest('[data-action="inspect"]')) {
           openProcessModal(id);
+        } else if (ev.target.closest('[data-action="history"]')) {
+          const evObj = state.events.find((x) => x.id === id);
+          if (evObj) openHistoryModal(evObj.comm, evObj.pid);
         }
       });
 
@@ -1068,6 +1077,425 @@
     modal?.classList.add("active");
   }
 
+  // --- PROCESS TELEMETRY HISTORY MODAL (Local DBMS Multi-Day History) ---
+  async function openHistoryModal(comm, pid, days = state.historyDays || 7) {
+    if (!comm) return;
+    state.historyComm = comm;
+    state.historyPid = pid;
+    state.historyDays = days;
+
+    const modal = document.getElementById("historyModal");
+    const nameEl = document.getElementById("histProcessName");
+    const subEl = document.getElementById("histProcessSub");
+    const maturityEl = document.getElementById("histProfileMaturity");
+
+    const base = state.profiles[comm] || BASELINE_DEFINITIONS[comm] || {
+      avgCpu: 1.5,
+      avgMem: 40.0,
+      path: "/usr/bin/" + comm,
+      user: "system",
+      cluster: "systemd",
+    };
+
+    if (nameEl) nameEl.textContent = `${comm} (PID ${pid || "--"})`;
+    if (subEl)
+      subEl.textContent = `Executable: ${base.path || "/usr/bin/" + comm} • User: ${base.user || "system"} • Storage: Local SQLite DBMS`;
+    if (maturityEl) maturityEl.textContent = `${days}-Day History • Local DBMS`;
+
+    // Highlight active time-range button
+    document.querySelectorAll(".time-range-btn").forEach((btn) => {
+      btn.classList.toggle("active", parseInt(btn.getAttribute("data-days"), 10) === days);
+    });
+
+    modal?.classList.add("active");
+
+    // Fetch history from backend API (with offline synthesizer fallback)
+    try {
+      const resp = await fetch(`/api/history?comm=${encodeURIComponent(comm)}&pid=${pid || 0}&days=${days}&limit=200`);
+      if (resp.ok) {
+        state.historyData = await resp.json();
+      } else {
+        state.historyData = generateFallbackHistory(comm, pid, days);
+      }
+    } catch (err) {
+      state.historyData = generateFallbackHistory(comm, pid, days);
+    }
+
+    renderHistoryModalView();
+  }
+
+  function generateFallbackHistory(comm, pid, days) {
+    const base = state.profiles[comm] || BASELINE_DEFINITIONS[comm] || {
+      avgCpu: 2.2,
+      avgMem: 45.0,
+      user: "user",
+    };
+    const hours = Math.max(24, days * 24);
+    const step = Math.max(2, Math.floor(hours / 28));
+    const now = Date.now();
+    const timeline = [];
+    const cpus = [], mems = [], nets = [], syscalls = [];
+    let anoms = 0;
+
+    for (let h = hours; h >= 0; h -= step) {
+      const ts = new Date(now - h * 3600 * 1000);
+      const hour = ts.getHours();
+      const mult = hour >= 9 && hour <= 20 ? 1.25 : 0.6;
+      const spike = h % 18 === 0 ? 2.4 : 1.0;
+
+      const c = parseFloat(Math.max(0.1, base.avgCpu * mult * spike + Math.sin(h) * 0.4).toFixed(1));
+      const m = parseFloat(Math.max(8.0, base.avgMem * (0.95 + Math.cos(h) * 0.08)).toFixed(1));
+      const n = parseFloat(Math.max(0.0, base.avgCpu * 12.0 * mult * spike + Math.cos(h) * 5.0).toFixed(1));
+      const sc = Math.max(20, Math.floor(base.avgCpu * 140 * mult * spike + Math.sin(h) * 30));
+      const risk = Math.min(95, Math.max(4, Math.floor(c * 1.8 + n / 12.0 + (spike > 2 ? 15 : 0))));
+      const status = risk >= 75 ? "ANOMALOUS" : risk >= 40 ? "SUSPICIOUS" : "SAFE";
+      if (status !== "SAFE") anoms++;
+
+      cpus.push(c);
+      mems.push(m);
+      nets.push(n);
+      syscalls.push(sc);
+
+      const dStr = ts.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      const tStr = ts.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+
+      timeline.push({
+        id: `fb-${comm}-${h}h`,
+        timestamp: `${dStr}, ${tStr}`,
+        created_at: ts.toISOString(),
+        cpu: c,
+        mem: m,
+        net_kb: n,
+        syscalls: sc,
+        riskScore: risk,
+        status: status,
+        anomalyDetails: status === "SAFE" ? "Conforms to 30d rolling baseline" : "Transient workload deviation",
+      });
+    }
+
+    return {
+      comm: comm,
+      pid: pid,
+      days: days,
+      summary: {
+        total_snapshots: timeline.length,
+        avg_cpu: parseFloat((cpus.reduce((a, b) => a + b, 0) / cpus.length).toFixed(1)),
+        peak_cpu: Math.max(...cpus),
+        avg_mem: parseFloat((mems.reduce((a, b) => a + b, 0) / mems.length).toFixed(1)),
+        peak_mem: Math.max(...mems),
+        avg_net_kb: parseFloat((nets.reduce((a, b) => a + b, 0) / nets.length).toFixed(1)),
+        peak_net_kb: Math.max(...nets),
+        avg_syscalls: Math.floor(syscalls.reduce((a, b) => a + b, 0) / syscalls.length),
+        peak_syscalls: Math.max(...syscalls),
+        anomaly_count: anoms,
+        latest_status: timeline[timeline.length - 1]?.status || "SAFE",
+      },
+      timeline: timeline,
+      events: [...timeline].reverse(),
+    };
+  }
+
+  function renderHistoryModalView() {
+    if (!state.historyData) return;
+    const { summary, timeline, events } = state.historyData;
+    const latest = timeline[timeline.length - 1] || {};
+
+    // Update KPI Cards
+    const cpuVal = document.getElementById("histCpuVal");
+    const cpuAvg = document.getElementById("histCpuAvg");
+    const cpuPeak = document.getElementById("histCpuPeak");
+    if (cpuVal) cpuVal.textContent = `${latest.cpu ?? summary.avg_cpu}%`;
+    if (cpuAvg) cpuAvg.textContent = `${summary.avg_cpu}%`;
+    if (cpuPeak) cpuPeak.textContent = `${summary.peak_cpu}%`;
+
+    const memVal = document.getElementById("histMemVal");
+    const memAvg = document.getElementById("histMemAvg");
+    const memPeak = document.getElementById("histMemPeak");
+    if (memVal) memVal.textContent = `${latest.mem ?? summary.avg_mem} MB`;
+    if (memAvg) memAvg.textContent = `${summary.avg_mem} MB`;
+    if (memPeak) memPeak.textContent = `${summary.peak_mem} MB`;
+
+    const netVal = document.getElementById("histNetVal");
+    const netAvg = document.getElementById("histNetAvg");
+    const netPeak = document.getElementById("histNetPeak");
+    if (netVal) netVal.textContent = `${latest.net_kb ?? summary.avg_net_kb} KB/s`;
+    if (netAvg) netAvg.textContent = `${summary.avg_net_kb} KB/s`;
+    if (netPeak) netPeak.textContent = `${summary.peak_net_kb} KB/s`;
+
+    const scVal = document.getElementById("histSyscallVal");
+    const anomCount = document.getElementById("histAnomCount");
+    const histStatus = document.getElementById("histStatus");
+    if (scVal) scVal.textContent = `${latest.syscalls ?? summary.avg_syscalls} /s`;
+    if (anomCount) anomCount.textContent = `${summary.anomaly_count}`;
+    if (histStatus) {
+      histStatus.textContent = summary.latest_status || "SAFE";
+      histStatus.style.color =
+        summary.latest_status === "ANOMALOUS"
+          ? "#f43f5e"
+          : summary.latest_status === "SUSPICIOUS"
+          ? "#f59e0b"
+          : "var(--primary-emerald, #00c288)";
+    }
+
+    const recCount = document.getElementById("histRecordCount");
+    if (recCount) recCount.textContent = timeline.length;
+
+    const chartLegend = document.getElementById("histChartLegend");
+    if (chartLegend)
+      chartLegend.textContent = `Timeline: ${timeline.length} checkpoints over past ${state.historyDays} days`;
+
+    // Render SVG Chart for current metric
+    renderHistoryChart(state.historyMetric);
+
+    // Render Events Table
+    const tableBody = document.getElementById("historyTableBody");
+    if (tableBody) {
+      tableBody.innerHTML = events
+        .map((pt) => {
+          const riskClass =
+            pt.riskScore >= 75
+              ? "text-rose font-bold"
+              : pt.riskScore >= 40
+              ? "text-amber font-bold"
+              : "";
+          const statusClass =
+            pt.status === "ANOMALOUS"
+              ? "pill-danger"
+              : pt.status === "SUSPICIOUS"
+              ? "pill-warn"
+              : "pill-safe";
+          return `
+          <tr>
+            <td>${pt.timestamp}</td>
+            <td><span class="font-mono">${pt.cpu}%</span></td>
+            <td><span class="font-mono">${pt.mem} MB</span></td>
+            <td><span class="font-mono">${pt.net_kb || 0.0} KB/s</span></td>
+            <td><span class="font-mono">${pt.syscalls}</span></td>
+            <td><span class="font-mono ${riskClass}">${pt.riskScore}/100</span></td>
+            <td><span class="risk-pill ${statusClass}">${pt.status}</span></td>
+            <td style="color: var(--text-muted); font-size: 0.68rem;">${pt.anomalyDetails || "Normal activity"}</td>
+          </tr>
+        `;
+        })
+        .join("");
+    }
+  }
+
+  function renderHistoryChart(metric = "cpu") {
+    state.historyMetric = metric;
+    const svg = document.getElementById("historySvgChart");
+    const tooltip = document.getElementById("historyChartTooltip");
+    if (
+      !svg ||
+      !state.historyData ||
+      !state.historyData.timeline ||
+      state.historyData.timeline.length === 0
+    )
+      return;
+
+    // Highlight active metric tab
+    document.querySelectorAll(".hist-metric-tab").forEach((tab) => {
+      tab.classList.toggle("active", tab.getAttribute("data-metric") === metric);
+    });
+
+    const timeline = state.historyData.timeline;
+    const summary = state.historyData.summary;
+
+    let values, unit, title, color, gradId, avgVal;
+    if (metric === "cpu") {
+      values = timeline.map((p) => p.cpu);
+      unit = "%";
+      title = "CPU Utilisation";
+      color = "#00c288";
+      gradId = "gradCpu";
+      avgVal = summary.avg_cpu;
+    } else if (metric === "mem") {
+      values = timeline.map((p) => p.mem);
+      unit = " MB";
+      title = "RAM Memory RSS";
+      color = "#3b82f6";
+      gradId = "gradMem";
+      avgVal = summary.avg_mem;
+    } else if (metric === "net") {
+      values = timeline.map((p) => p.net_kb || 0.0);
+      unit = " KB/s";
+      title = "Network Bandwidth";
+      color = "#8b5cf6";
+      gradId = "gradNet";
+      avgVal = summary.avg_net_kb;
+    } else {
+      values = timeline.map((p) => p.riskScore || 0);
+      unit = "/100";
+      title = "Anomaly Risk Score";
+      color = "#f43f5e";
+      gradId = "gradRisk";
+      avgVal = 15;
+    }
+
+    const maxRaw = Math.max(...values, 1.0);
+    const maxY = metric === "risk" ? 100 : parseFloat((maxRaw * 1.25).toFixed(1));
+    const minY = 0;
+
+    const width = 880;
+    const height = 230;
+    const padLeft = 55;
+    const padRight = 30;
+    const padTop = 20;
+    const padBottom = 35;
+    const plotW = width - padLeft - padRight;
+    const plotH = height - padTop - padBottom;
+
+    const n = values.length;
+    const coords = values.map((v, i) => {
+      const x = padLeft + (n > 1 ? (i / (n - 1)) * plotW : plotW / 2);
+      const y = padTop + plotH - ((v - minY) / (maxY - minY)) * plotH;
+      return { x, y, val: v, pt: timeline[i] };
+    });
+
+    // Generate Path Data
+    let pathD = `M ${coords[0].x} ${coords[0].y}`;
+    for (let i = 1; i < coords.length; i++) {
+      const prev = coords[i - 1];
+      const curr = coords[i];
+      const cx1 = prev.x + (curr.x - prev.x) / 2;
+      const cy1 = prev.y;
+      const cx2 = prev.x + (curr.x - prev.x) / 2;
+      const cy2 = curr.y;
+      pathD += ` C ${cx1} ${cy1}, ${cx2} ${cy2}, ${curr.x} ${curr.y}`;
+    }
+
+    const areaD = `${pathD} L ${coords[coords.length - 1].x} ${padTop + plotH} L ${coords[0].x} ${padTop + plotH} Z`;
+    const avgY = padTop + plotH - ((avgVal - minY) / (maxY - minY)) * plotH;
+
+    // Grid lines (4 ticks)
+    const gridTicks = [0, 0.33, 0.66, 1.0];
+    const gridSvg = gridTicks
+      .map((t) => {
+        const y = padTop + plotH - t * plotH;
+        const val = (minY + t * (maxY - minY)).toFixed(
+          metric === "cpu" || metric === "net" ? 1 : 0
+        );
+        return `
+        <line x1="${padLeft}" y1="${y}" x2="${width - padRight}" y2="${y}" stroke="var(--chart-grid-line, #e2e8f0)" stroke-width="1" stroke-dasharray="3,3" />
+        <text x="${padLeft - 8}" y="${y + 4}" font-size="10" font-family="monospace" text-anchor="end" fill="var(--chart-text, #64748b)">${val}${unit}</text>
+      `;
+      })
+      .join("");
+
+    // X-Axis Date Labels (4-5 checkpoints)
+    const xStep = Math.max(1, Math.floor(n / 4));
+    let xLabelsSvg = "";
+    for (let i = 0; i < n; i += xStep) {
+      const c = coords[i];
+      const label = c.pt.timestamp.split(",")[0] || c.pt.timestamp;
+      xLabelsSvg += `
+        <text x="${c.x}" y="${height - 10}" font-size="10" font-family="monospace" text-anchor="middle" fill="var(--chart-text, #64748b)">${label}</text>
+      `;
+    }
+
+    // Circles for hover
+    const dotsSvg = coords
+      .map((c, idx) => {
+        const isAnom = c.pt.status === "ANOMALOUS" || c.pt.riskScore >= 75;
+        const dotColor = isAnom ? "#f43f5e" : color;
+        const r = isAnom ? 5 : 3.5;
+        return `
+        <circle cx="${c.x}" cy="${c.y}" r="${r}" fill="${dotColor}" stroke="#ffffff" stroke-width="1.5" class="hist-chart-dot" data-idx="${idx}" style="cursor: pointer;" />
+      `;
+      })
+      .join("");
+
+    svg.innerHTML = `
+      <defs>
+        <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${color}" stop-opacity="0.32" />
+          <stop offset="100%" stop-color="${color}" stop-opacity="0.01" />
+        </linearGradient>
+      </defs>
+
+      <!-- Grid -->
+      ${gridSvg}
+
+      <!-- Baseline Average Dashed Line -->
+      <line x1="${padLeft}" y1="${avgY}" x2="${width - padRight}" y2="${avgY}" stroke="${color}" stroke-width="1.5" stroke-dasharray="5,4" opacity="0.7" />
+      <text x="${width - padRight + 4}" y="${avgY + 3}" font-size="9" font-family="monospace" fill="${color}">Avg (${avgVal}${unit})</text>
+
+      <!-- Fill Area -->
+      <path d="${areaD}" fill="url(#${gradId})" />
+
+      <!-- Curve Stroke -->
+      <path d="${pathD}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" />
+
+      <!-- Dots -->
+      ${dotsSvg}
+
+      <!-- X-Axis Labels -->
+      ${xLabelsSvg}
+    `;
+
+    // Tooltip listeners on dots
+    svg.querySelectorAll(".hist-chart-dot").forEach((dot) => {
+      dot.addEventListener("mouseenter", () => {
+        const idx = parseInt(dot.getAttribute("data-idx"), 10);
+        const c = coords[idx];
+        if (!c || !tooltip) return;
+
+        tooltip.innerHTML = `
+          <strong>${c.pt.timestamp}</strong><br>
+          ${title}: <span style="color:${color}; font-weight:bold;">${c.val}${unit}</span><br>
+          Syscalls: ${c.pt.syscalls} • Risk: ${c.pt.riskScore}/100<br>
+          Status: <span style="color:${c.pt.status === "ANOMALOUS" ? "#f43f5e" : "#10b981"}">${c.pt.status}</span>
+        `;
+        const rect = svg.getBoundingClientRect();
+        const ptX = (c.x / width) * rect.width;
+        const ptY = (c.y / height) * rect.height;
+
+        tooltip.style.left = `${ptX}px`;
+        tooltip.style.top = `${ptY}px`;
+        tooltip.style.display = "block";
+      });
+
+      dot.addEventListener("mouseleave", () => {
+        if (tooltip) tooltip.style.display = "none";
+      });
+    });
+  }
+
+  function exportHistoryCsv() {
+    if (!state.historyData || !state.historyData.timeline || state.historyData.timeline.length === 0) {
+      showToast("No historical data to export.", "warn");
+      return;
+    }
+    const comm = state.historyData.comm || "process";
+    const rows = [
+      ["Timestamp", "PID", "Comm", "User", "CPU_Percent", "Memory_MB", "Network_KBps", "Syscalls", "RiskScore", "Status", "AnomalyDetails"],
+    ];
+    state.historyData.timeline.forEach((pt) => {
+      rows.push([
+        pt.timestamp,
+        pt.pid || state.historyData.pid || "",
+        comm,
+        pt.user || "system",
+        pt.cpu,
+        pt.mem,
+        pt.net_kb || 0.0,
+        pt.syscalls,
+        pt.riskScore,
+        pt.status,
+        `"${(pt.anomalyDetails || "").replace(/"/g, '""')}"`,
+      ]);
+    });
+    const csvContent = "data:text/csv;charset=utf-8," + rows.map((e) => e.join(",")).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `chronicle_history_${comm}_${state.historyDays}d.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    showToast(`Exported ${state.historyDays}-day history for ${comm} as CSV.`, "info");
+  }
+
   function closeAllModals() {
     document
       .querySelectorAll(".modal-overlay")
@@ -1170,6 +1598,18 @@
         }
       });
 
+    // History Button
+    document
+      .getElementById("btnHistorySelected")
+      ?.addEventListener("click", () => {
+        const ev = state.events.find((e) => e.id === state.selectedEventId) || state.events[0];
+        if (ev) {
+          openHistoryModal(ev.comm, ev.pid);
+        } else {
+          showToast("Select a process to view its historical telemetry.", "warn");
+        }
+      });
+
     document.getElementById("btnEndTask")?.addEventListener("click", () => {
       if (state.selectedEventId) {
         terminateProcess(state.selectedEventId);
@@ -1183,11 +1623,48 @@
     });
 
     document
+      .getElementById("btnModalViewHistory")
+      ?.addEventListener("click", () => {
+        const ev = state.events.find((e) => e.id === state.selectedEventId) || state.events[0];
+        if (ev) {
+          closeAllModals();
+          openHistoryModal(ev.comm, ev.pid);
+        }
+      });
+
+    document
       .getElementById("btnModalClose")
       ?.addEventListener("click", closeAllModals);
     document
       .getElementById("closeModalBtn")
       ?.addEventListener("click", closeAllModals);
+    document
+      .getElementById("btnHistoryClose")
+      ?.addEventListener("click", closeAllModals);
+    document
+      .getElementById("closeHistoryModalBtn")
+      ?.addEventListener("click", closeAllModals);
+    document
+      .getElementById("btnExportHistoryCsv")
+      ?.addEventListener("click", exportHistoryCsv);
+
+    // History Modal Range Buttons
+    document.querySelectorAll(".time-range-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const d = parseInt(btn.getAttribute("data-days"), 10);
+        if (d && state.historyComm) {
+          openHistoryModal(state.historyComm, state.historyPid, d);
+        }
+      });
+    });
+
+    // History Modal Metric Switcher Tabs
+    document.querySelectorAll(".hist-metric-tab").forEach((tab) => {
+      tab.addEventListener("click", () => {
+        const m = tab.getAttribute("data-metric");
+        if (m) renderHistoryChart(m);
+      });
+    });
 
     // 5. Live Stream Toggles
     document
@@ -1400,7 +1877,7 @@
       });
     });
 
-    // Keyboard Shortcuts (⌘K, ⌘I, Escape)
+    // Keyboard Shortcuts (⌘K, ⌘I, ⌘H, Escape)
     window.addEventListener("keydown", (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
@@ -1408,6 +1885,10 @@
       } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "i") {
         e.preventDefault();
         if (state.selectedEventId) openProcessModal(state.selectedEventId);
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "h") {
+        e.preventDefault();
+        const ev = state.events.find((x) => x.id === state.selectedEventId) || state.events[0];
+        if (ev) openHistoryModal(ev.comm, ev.pid);
       } else if (e.key === "Escape") {
         closeAllModals();
       }

@@ -74,6 +74,26 @@ class ChronicleAPIHandler:
                     stats = self.pipeline.get_stats()
                     return 200, headers, json.dumps(stats).encode("utf-8")
 
+                elif route == "/api/history":
+                    comm = query.get("comm", [""])[0].strip()
+                    if not comm:
+                        return 400, headers, json.dumps({"error": "Missing required 'comm' query parameter"}).encode("utf-8")
+                    try:
+                        pid = int(query.get("pid", [0])[0]) if query.get("pid") else None
+                    except (ValueError, TypeError):
+                        pid = None
+                    try:
+                        days = max(1, min(30, int(query.get("days", [7])[0])))
+                    except (ValueError, TypeError):
+                        days = 7
+                    try:
+                        limit = max(10, min(500, int(query.get("limit", [200])[0])))
+                    except (ValueError, TypeError):
+                        limit = 200
+
+                    history_data = self.pipeline.get_process_history(comm=comm, pid=pid, days=days, limit=limit)
+                    return 200, headers, json.dumps(history_data).encode("utf-8")
+
             elif method == "POST":
                 if route == "/api/simulate":
                     scenario = data.get("scenario") or "interactive_shell_from_daemon"
