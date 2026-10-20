@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from chronicle.config import ChronicleConfig
-from chronicle.collector import TelemetryCollector
+from chronicle.collector import TelemetryCollector, classify_process_cluster
 from chronicle.ml_detector import MLDetectionEngine
 from chronicle.risk_engine import RiskEngine, ScoringResult
 from chronicle.storage import ChronicleDatabase, ProcessProfile
@@ -155,6 +155,7 @@ class ChroniclePipeline:
             "ppid": ppid,
             "comm": comm,
             "user": user,
+            "cluster": ev.get("cluster") or classify_process_cluster(comm, user),
             "eventType": ev.get("eventType", "sys_sample"),
             "cpu": cpu,
             "mem": mem,
