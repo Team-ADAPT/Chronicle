@@ -231,6 +231,54 @@
     },
   };
 
+  // --- CLUSTER CLASSIFICATION ---
+  function getProcessCluster(comm, user) {
+    const c = (comm || "").toLowerCase();
+    const u = (user || "").toLowerCase();
+
+    // Network & Web
+    if (
+      [
+        "nginx", "apache", "http", "ssh", "dns", "rsyslog", "curl", "wget",
+        "socket", "net", "chrome", "firefox", "safari", "browser", "discord",
+        "slack", "mail", "fetch", "cloud", "sync", "mdns", "bluetooth", "wifi",
+        "network", "tcp", "udp", "router"
+      ].some((k) => c.includes(k))
+    ) {
+      return "nginx";
+    }
+
+    // Containers & Workers
+    if (
+      [
+        "docker", "container", "runc", "kswapd", "worker", "celery", "redis",
+        "postgres", "mysql", "mongo", "daemon", "db", "engine", "service", "core"
+      ].some((k) => c.includes(k))
+    ) {
+      return "dockerd";
+    }
+
+    // User Shells & Apps
+    if (
+      [
+        "bash", "zsh", "sh", "fish", "python", "node", "npm", "ruby", "perl",
+        "git", "code", "electron", "antigravity", "vim", "nano", "cat", "grep",
+        "sudo", "cargo", "rust", "go", "java", "terminal", "iterm", "alacritty",
+        "sublime", "cursor", "idea", "pycharm"
+      ].some((k) => c.includes(k)) ||
+      (u &&
+        ![
+          "root", "system", "_spotlight", "windowserver", "_coreaudiod",
+          "_locationd", "_distnote"
+        ].includes(u))
+    ) {
+      return "bash";
+    }
+
+    // System Daemons & Kernel Threads
+    return "systemd";
+  }
+
   // --- THEME ENGINE ---
   function initTheme() {
     const savedTheme = localStorage.getItem("chronicle_theme");
@@ -442,6 +490,11 @@
     const totalEventsBadge = document.getElementById("totalEventsBadge");
     const anomalySegBadge = document.getElementById("anomalySegBadge");
     const menuAlertBadge = document.getElementById("menuAlertBadge");
+    const cpuSubtext = document.getElementById("cpuSubtext");
+    const clusterSystemd = document.getElementById("clusterCountSystemd");
+    const clusterNginx = document.getElementById("clusterCountNginx");
+    const clusterBash = document.getElementById("clusterCountBash");
+    const clusterDockerd = document.getElementById("clusterCountDockerd");
 
     const total = state.events.length;
     const anomCount = state.events.filter(
@@ -471,6 +524,26 @@
       if (normalcyEl) normalcyEl.textContent = `${normalcy}%`;
       if (anomalyStatusText)
         anomalyStatusText.textContent = `${anomCount} Anomalies Active (>3σ)`;
+
+      if (cpuSubtext && state.backendStats.process_count != null) {
+        const pCount = state.backendStats.process_count;
+        const tCount =
+          state.backendStats.thread_count != null
+            ? state.backendStats.thread_count
+            : Math.round(pCount * 4.4);
+        cpuSubtext.textContent = `${pCount} Active Processes • ${tCount} Threads`;
+      }
+
+      if (state.backendStats.cluster_counts) {
+        if (clusterSystemd)
+          clusterSystemd.textContent = `${state.backendStats.cluster_counts.systemd || 0} Procs`;
+        if (clusterNginx)
+          clusterNginx.textContent = `${state.backendStats.cluster_counts.nginx || 0} Procs`;
+        if (clusterBash)
+          clusterBash.textContent = `${state.backendStats.cluster_counts.bash || 0} Procs`;
+        if (clusterDockerd)
+          clusterDockerd.textContent = `${state.backendStats.cluster_counts.dockerd || 0} Procs`;
+      }
     } else {
       if (cpuEl) cpuEl.textContent = `${avgCpu}%`;
       if (memEl)
@@ -481,6 +554,25 @@
       if (normalcyEl) normalcyEl.textContent = `${normalcy}%`;
       if (anomalyStatusText)
         anomalyStatusText.textContent = `${anomCount} Anomalies Active (>3σ)`;
+
+      const counts = { systemd: 0, nginx: 0, bash: 0, dockerd: 0 };
+      const seenPids = new Set();
+      state.events.forEach((e) => {
+        if (seenPids.has(e.pid)) return;
+        seenPids.add(e.pid);
+        const c = e.cluster || getProcessCluster(e.comm, e.user);
+        if (counts[c] !== undefined) counts[c]++;
+        else counts.systemd++;
+      });
+      const uniqueProcs = seenPids.size || state.events.length;
+      const estThreads = Math.round(uniqueProcs * 4.4);
+      if (cpuSubtext) {
+        cpuSubtext.textContent = `${uniqueProcs} Active Processes • ${estThreads} Threads`;
+      }
+      if (clusterSystemd) clusterSystemd.textContent = `${counts.systemd} Procs`;
+      if (clusterNginx) clusterNginx.textContent = `${counts.nginx} Procs`;
+      if (clusterBash) clusterBash.textContent = `${counts.bash} Procs`;
+      if (clusterDockerd) clusterDockerd.textContent = `${counts.dockerd} Procs`;
     }
 
     if (totalEventsBadge)
@@ -1941,8 +2033,9 @@
         state.events = resEvents.map((e) => ({
           ...e,
           cluster:
+            e.cluster ||
             (state.profiles[e.comm] && state.profiles[e.comm].cluster) ||
-            "systemd",
+            getProcessCluster(e.comm, e.user),
         }));
       }
 
