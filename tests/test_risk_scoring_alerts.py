@@ -1,17 +1,4 @@
-"""
-Chronicle Task 2 — Risk Scoring & Explainable Alerts: Test Suite
-================================================================
-Covers:
-  A. Risk scoring — boundaries, normalization, all evidence types, deduplication,
-     NaN/Inf/None inputs, determinism, eval_status contract.
-  B. Explainable alerts — required fields, honest explanations, missing metadata,
-     malformed events, missing models, stable alert identity, deduplication.
-  C. Integration — normal → no alert, suspicious → alert, invalid events handled,
-     feature-flag disablement, regression against existing components.
 
-Fixtures use clearly labelled synthetic data matching the real collector schema.
-Live eBPF runtime is BLOCKED on macOS; documented where relevant.
-"""
 from __future__ import annotations
 
 import hashlib
@@ -45,12 +32,8 @@ from chronicle.risk_engine import (
 from chronicle.storage import ChronicleDatabase
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Fixtures / helpers
-# ─────────────────────────────────────────────────────────────────────────────
 
 def _devs(cpu_z=0.0, mem_z=0.0, sys_z=0.0) -> Dict[str, Any]:
-    """Synthetic deviation dict (mirrors ProcessProfile.evaluate_deviations output)."""
     return {
         "cpu_z": cpu_z,
         "mem_z": mem_z,
@@ -113,12 +96,8 @@ def _eval(devs=None, ml=None, flags=None, enabled=True) -> ScoringResult:
     )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# A. Risk Scoring Tests
-# ─────────────────────────────────────────────────────────────────────────────
 
 class TestRiskScoreCategories:
-    """Category boundary tests."""
 
     def test_score_below_25_is_low(self):
         r = _eval()
@@ -126,8 +105,6 @@ class TestRiskScoreCategories:
         assert r.risk_category == "Low"
 
     def test_score_25_is_medium(self):
-        # Force score to exactly 25 via ml if_score
-        # if_score = -0.042 → |if_score| * 120 + 20 = 5.04 + 20 = 25.04 → capped ≤ 35
         r = _eval(ml={"ml_available": True, "if_pred": -1, "if_score": -0.042, "xgb_prob": 0.0, "xgb_attack": False})
         assert r.risk_score >= 25
         assert r.risk_category in ("Medium", "High", "Critical")
@@ -137,11 +114,9 @@ class TestRiskScoreCategories:
             devs=_devs(cpu_z=3.5),
             ml=_ml_if_anomaly(-0.10),
         )
-        # cpu_z=3.5 → min(35, 3.5*8)=28 + IF → ≥ 50
         if r.risk_score >= 50:
             assert r.risk_category in ("High", "Critical")
         else:
-            # score may legitimately be < 50 depending on exact weights
             assert r.risk_category in ("Low", "Medium", "High")
 
     def test_score_75_is_critical(self):
@@ -150,7 +125,6 @@ class TestRiskScoreCategories:
         assert r.risk_category == "Critical"
 
     def test_score_max_is_99(self):
-        # Pile on all contributors
         r = _eval(
             devs=_devs(cpu_z=10.0, mem_z=10.0, sys_z=10.0),
             ml=_ml_both_fired(-0.5, 0.999),
@@ -160,7 +134,6 @@ class TestRiskScoreCategories:
 
     def test_score_min_is_0_when_enabled_no_signals(self):
         r = _eval(ml=_ml_unavailable())
-        # No signals → score is 0 (not floored to 5 anymore)
         assert r.risk_score == 0
 
     def test_score_to_category_boundaries(self):
@@ -175,7 +148,6 @@ class TestRiskScoreCategories:
 
 
 class TestScoringComponents:
-    """Test each evidence component independently and combined."""
 
     def test_analytic_only_no_ml(self):
         r = _eval(ml=_ml_unavailable(), flags=["privilege_escalation"])
@@ -204,7 +176,7 @@ class TestScoringComponents:
 
     def test_statistical_only_high_cpu(self):
         r = _eval(devs=_devs(cpu_z=4.0), ml=_ml_unavailable())
-        assert r.detection_source == "none"  # ML unavailable → stat only, not "ml"
+        assert r.detection_source == "none"
         assert any(s.source == "statistical" and s.name == "cpu_z_score" for s in r.signals)
         assert r.risk_score > 0
 
@@ -217,7 +189,6 @@ class TestScoringComponents:
         assert any(s.source == "statistical" and s.name == "syscall_z_score" for s in r.signals)
 
     def test_below_threshold_no_stat_signal(self):
-        # cpu_z=1.5 is below the 2.0 threshold → no stat signal
         r = _eval(devs=_devs(cpu_z=1.5), ml=_ml_unavailable())
         assert not any(s.source == "statistical" for s in r.signals)
 
@@ -230,12 +201,10 @@ class TestScoringComponents:
 
 
 class TestDuplicateSignals:
-    """Duplicate and repeated signals must not inflate score indefinitely."""
 
     def test_duplicate_heuristic_flag_counted_once(self):
         r_single = _eval(flags=["crypto_mining"])
         r_double = _eval(flags=["crypto_mining", "crypto_mining"])
-        # Both should have exactly one heuristic signal for crypto_mining
         heuristic_signals_single = [s for s in r_single.signals if s.source == "heuristic"]
         heuristic_signals_double = [s for s in r_double.signals if s.source == "heuristic"]
         assert len(heuristic_signals_single) == 1
@@ -249,7 +218,6 @@ class TestDuplicateSignals:
 
 
 class TestInvalidInputs:
-    """NaN, Inf, None, wrong types must be handled without crashing."""
 
     def test_nan_cpu_z_yields_insufficient(self):
         r = _eval(devs={"cpu_z": float("nan"), "mem_z": 0.0, "syscalls_z": 0.0, "max_z": 0.0})
@@ -279,7 +247,6 @@ class TestInvalidInputs:
         assert r.eval_status == EVAL_INSUFFICIENT
 
     def test_invalid_inputs_do_not_crash(self):
-        # Must return a ScoringResult, not raise
         for bad_devs in [
             {"cpu_z": None, "mem_z": None, "syscalls_z": None, "max_z": None},
             {},
@@ -300,7 +267,6 @@ class TestInvalidInputs:
 
 
 class TestDeterminism:
-    """Equivalent inputs must produce identical scores."""
 
     def test_same_inputs_same_score(self):
         kwargs = dict(devs=_devs(cpu_z=3.5), ml=_ml_if_anomaly(), flags=["crypto_mining"])
@@ -317,7 +283,6 @@ class TestDeterminism:
 
 
 class TestEvalStatus:
-    """Evaluation status contract — three clearly distinct states."""
 
     def test_normal_event_is_evaluated(self):
         r = _eval(ml=_ml_clean())
@@ -334,24 +299,16 @@ class TestEvalStatus:
         assert r.eval_status == EVAL_INSUFFICIENT
 
     def test_ml_unavailable_but_heuristic_is_evaluated(self):
-        # Heuristic signal is sufficient → evaluated
         r = _eval(ml=_ml_unavailable(), flags=["crypto_mining"])
         assert r.eval_status == EVAL_OK
 
     def test_missing_data_not_treated_as_zero_risk(self):
-        # When ml_available=False and no heuristics, eval_status must NOT be "evaluated"
         r = _eval(ml=_ml_unavailable())
-        assert r.eval_status != EVAL_OK, (
-            "Missing ML data and no heuristics should not silently produce eval_status='evaluated'"
-        )
+        assert r.eval_status != EVAL_OK
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# B. Explainable Alert Tests
-# ─────────────────────────────────────────────────────────────────────────────
 
 class TestAlertSchema:
-    """Alert dict must contain required fields."""
 
     REQUIRED_FIELDS = [
         "id", "timestamp", "pid", "comm", "riskScore", "riskCategory",
@@ -427,7 +384,6 @@ class TestAlertSchema:
 
 
 class TestAlertExplanation:
-    """Explanations must be traceable to actual evidence."""
 
     def test_heuristic_explanation_mentions_flag(self):
         sr = _eval(flags=["interactive_shell_from_daemon"])
@@ -444,7 +400,6 @@ class TestAlertExplanation:
         assert sr.reasons  # non-empty
 
     def test_explanation_does_not_fabricate_evidence(self):
-        # No ML signal, no heuristic — explanation must NOT claim ML or heuristic detected anything
         sr = _eval(ml=_ml_unavailable())
         assert "ml" not in sr.anomaly_details.lower() or "unavailable" in sr.anomaly_details.lower() or sr.anomaly_details == ""
 
@@ -452,7 +407,6 @@ class TestAlertExplanation:
         sr = _eval(flags=["mass_file_traversal"])
         cat = _score_to_category(sr.risk_score)
         assert cat == sr.risk_category
-        # If score ≥ 70, status should be ANOMALOUS
         if sr.risk_score >= 70:
             assert sr.status == "ANOMALOUS"
 
@@ -460,7 +414,6 @@ class TestAlertExplanation:
         sr = _eval(ml=_ml_if_anomaly(-0.12))
         if_signal = next((s for s in sr.signals if s.source == "isolation_forest"), None)
         if if_signal:
-            # Should NOT say "confidence" or "probability of attack"
             assert "calibrated attack probability" not in if_signal.description.lower() or \
                    "not a calibrated" in if_signal.description.lower()
 
@@ -473,7 +426,6 @@ class TestAlertExplanation:
 
 
 class TestAlertIdentityAndDeduplication:
-    """Stable identity and deduplication window."""
 
     def test_same_event_same_dedup_key(self):
         sr = _eval(flags=["crypto_mining"])
@@ -530,11 +482,7 @@ class TestAlertIdentityAndDeduplication:
         assert alert_no_ts["timestamp_source"] == "ingestion"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# C. Integration and Regression Tests
-# ─────────────────────────────────────────────────────────────────────────────
 
-# Synthetic event fixtures — clearly labelled as synthetic, NOT live eBPF output
 SYNTHETIC_NORMAL_EVENT: Dict[str, Any] = {
     "id": "syn-norm-0001",
     "timestamp": "10:00:00",
@@ -569,7 +517,6 @@ SYNTHETIC_SUSPICIOUS_EVENT: Dict[str, Any] = {
 
 SYNTHETIC_MALFORMED_EVENT: Dict[str, Any] = {
     "id": "syn-bad-0001",
-    # Missing required fields: timestamp, comm are absent on purpose
     "pid": None,
     "cpu": "not_a_number",
 }
@@ -577,7 +524,6 @@ SYNTHETIC_MALFORMED_EVENT: Dict[str, Any] = {
 
 @pytest.fixture
 def pipeline(tmp_path):
-    """Pipeline with real ML models and isolated SQLite db (no live eBPF)."""
     cfg = ChronicleConfig(
         data_dir=tmp_path,
         db_path=tmp_path / "test.db",
@@ -603,12 +549,9 @@ def pipeline_scoring_disabled(tmp_path):
 
 
 class TestIntegration:
-    """Event-to-alert integration using clearly labelled synthetic fixtures."""
 
     def test_normal_event_produces_no_alert(self, pipeline):
         enriched = pipeline.process_raw_event(SYNTHETIC_NORMAL_EVENT.copy())
-        # Normal event with no heuristics and baseline-level metrics → no alert
-        # (ML may or may not flag it; we check that no alert is generated for SAFE events)
         if enriched["status"] == "SAFE":
             assert pipeline.total_anomalies_detected == 0
 
@@ -620,9 +563,8 @@ class TestIntegration:
         alerts = pipeline.get_alerts()
         assert len(alerts) >= 1
         alert = alerts[0]
-        # Alert must have evidence-backed description
-        assert alert["reasons"]  # non-empty
-        assert alert["contributing_signals"]  # non-empty
+        assert alert["reasons"]
+        assert alert["contributing_signals"]
         assert alert["dedup_key"].startswith("DK-")
         assert alert["config_version"] == SCORING_CONFIG_VERSION
 
@@ -631,7 +573,6 @@ class TestIntegration:
         alerts = pipeline.get_alerts()
         if alerts:
             alert = alerts[0]
-            # detection_source in alert must be consistent with which signals fired
             sources = {s["source"] for s in alert["contributing_signals"]}
             has_analytic = "heuristic" in sources
             has_ml = "isolation_forest" in sources or "xgboost" in sources
@@ -643,9 +584,7 @@ class TestIntegration:
                 assert alert["detection_source"] in ("ml", "both")
 
     def test_invalid_event_handled_without_crash(self, pipeline):
-        """A malformed event must not stop processing of subsequent valid events."""
         pipeline.process_raw_event(SYNTHETIC_MALFORMED_EVENT.copy())
-        # Pipeline must still work after the bad event
         enriched2 = pipeline.process_raw_event(SYNTHETIC_NORMAL_EVENT.copy())
         assert enriched2["id"] == "syn-norm-0001"
         assert pipeline.total_invalid_events >= 1
@@ -689,17 +628,14 @@ class TestIntegration:
         assert "detection_source" in enriched
 
     def test_db_alert_has_dedup_key(self, pipeline, tmp_path):
-        """Alert stored to DB must include dedup_key in reasons JSON (serialisation check)."""
         pipeline.process_raw_event(SYNTHETIC_SUSPICIOUS_EVENT.copy())
         db = ChronicleDatabase(tmp_path / "test.db")
         alerts = db.get_active_alerts(limit=10)
         if alerts:
-            # Alert from DB was retrieved; check it has the required id prefix
             assert alerts[0]["id"].startswith("ALT-")
 
 
 class TestRegressionTask1:
-    """Task 1 retraining tests must still pass (checked via subprocess/import)."""
 
     def test_task1_retrain_pipeline_importable(self):
         import importlib
@@ -708,7 +644,6 @@ class TestRegressionTask1:
             ROOT / "ML" / "src" / "retrain_pipeline.py"
         )
         mod = importlib.util.module_from_spec(spec)
-        # Just ensure import doesn't crash
         spec.loader.exec_module(mod)
         assert hasattr(mod, "RetrainingPipeline")
 
@@ -724,7 +659,6 @@ class TestRegressionTask1:
 
 
 class TestMLCompatibility:
-    """Existing ML interfaces must remain compatible."""
 
     def test_ml_detector_interface_unchanged(self):
         from chronicle.ml_detector import MLDetectionEngine
@@ -741,28 +675,12 @@ class TestMLCompatibility:
         assert len(extractor.columns) == 401
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# STOP GATE 4 — Document live eBPF and persistent dedup status
-# ─────────────────────────────────────────────────────────────────────────────
-
 class TestBlockedDependencies:
-    """
-    These tests document behaviour that cannot be verified in the current environment.
-    They do NOT assert live integration works — they record the gap.
-    """
 
     def test_ebpf_disabled_on_macos(self, pipeline):
-        """BLOCKED: eBPF requires root on Linux. Collector falls back to psutil."""
-        assert pipeline.collector.ebpf_enabled is False, (
-            "Expected eBPF to be disabled on macOS non-root environment. "
-            "Live kernel probe integration is BLOCKED."
-        )
+        assert pipeline.collector.ebpf_enabled is False
 
     def test_cross_restart_dedup_not_verified(self):
-        """BLOCKED: Dedup key is in-memory only. Cross-restart persistence requires
-        a persistent store (e.g., the SQLite alerts table lookup), which is not
-        implemented. This is documented as a known limitation."""
-        # The dedup_key is deterministic within a session; cross-restart is unverified.
         sr = _eval(flags=["crypto_mining"])
         k = make_dedup_key("nginx", 1234, "analytic", sr.signals, 100)
-        assert k.startswith("DK-")  # verifies key is deterministic within-session
+        assert k.startswith("DK-")
