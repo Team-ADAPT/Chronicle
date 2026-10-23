@@ -23,6 +23,7 @@ Tests cover all 20 required acceptance areas:
 19. Missing or corrupted artifacts
 20. CLI exit codes and error reporting
 """
+import hashlib
 import json
 import shutil
 import sys
@@ -39,7 +40,7 @@ ML_SRC_DIR = Path(__file__).resolve().parents[1] / "src"
 if str(ML_SRC_DIR) not in sys.path:
     sys.path.insert(0, str(ML_SRC_DIR))
 
-from model_registry import ModelRegistry, compute_sha256, compute_schema_fingerprint
+from model_registry import ModelRegistry, RunRecord, compute_sha256, compute_schema_fingerprint
 from retrain_pipeline import RetrainingPipeline, main as cli_main
 from validate_training_data import TrainingDataValidator, check_split_leakage
 
@@ -516,3 +517,239 @@ class TestCLIExecution:
         )
         code = cli_main()
         assert code == 2
+
+
+# ── Test 21: Model Registry Reconciliation & Safety Invariants ────────────────
+
+class TestRegistryReconciliationAndSafety:
+    """Regression tests verifying merge conflict safety invariants."""
+
+    def test_21_schema_fingerprint_serialization_compatibility(self):
+        """Canonical schema fingerprint produces reproducible SHA-256 for feature lists."""
+        cols = ["syscall_1", "syscall_2", "syscall_3", "ngram_1_2"]
+        canonical_hash = compute_schema_fingerprint(cols)
+        # Verify deterministic hash
+        assert len(canonical_hash) == 64
+        # Verify compatibility with sort_keys=False on string list sequences
+        legacy_hash = hashlib.sha256(json.dumps(cols, sort_keys=False).encode("utf-8")).hexdigest()
+        assert canonical_hash == legacy_hash
+
+    def test_22_run_record_backward_compatibility(self):
+        """RunRecord supports both artifact_path and model_path seamlessly."""
+        # 1. Created with artifact_path (HEAD style)
+        r1 = RunRecord(
+            run_id="run_1",
+            dataset="ADFA-LD",
+            model_type="XGBOOST",
+            created_at="2026-10-23T00:00:00Z",
+            sha256_hash="abc",
+            schema_fingerprint="def",
+            train_samples=100,
+            val_samples=20,
+            artifact_path="/path/to/model.joblib",
+        )
+        assert r1.artifact_path == "/path/to/model.joblib"
+        assert r1.model_path == "/path/to/model.joblib"
+        d1 = r1.to_dict()
+        assert d1["artifact_path"] == "/path/to/model.joblib"
+        assert d1["model_path"] == "/path/to/model.joblib"
+
+        # 2. Created with model_path (main style)
+        r2 = RunRecord(
+            run_id="run_2",
+            dataset="ADFA-LD",
+            model_type="XGBOOST",
+            created_at="2026-10-23T00:00:00Z",
+            sha256_hash="abc",
+            schema_fingerprint="def",
+            train_samples=100,
+            val_samples=20,
+            model_path="/path/to/model2.joblib",
+        )
+        assert r2.artifact_path == "/path/to/model2.joblib"
+        assert r2.model_path == "/path/to/model2.joblib"
+
+        # 3. from_dict with extra legacy fields
+        r3 = RunRecord.from_dict({
+            "run_id": "run_3",
+            "dataset": "PLAID",
+            "model_type": "ISOLATION_FOREST",
+            "created_at": "2026-10-23T00:00:00Z",
+            "sha256_hash": "123",
+            "schema_fingerprint": "456",
+            "train_samples": 50,
+            "val_samples": 10,
+            "model_path": "/path/to/model3.joblib",
+            "unknown_extra_field": "ignore_me",
+        })
+        assert r3.artifact_path == "/path/to/model3.joblib"
+        assert r3.run_id == "run_3"
+
+    def test_23_rejected_candidate_promotion_is_rejected(self, isolated_models_env):
+        """Promotion is strictly prohibited for non-ACCEPTED candidate models."""
+        registry = ModelRegistry(isolated_models_env)
+        rec = registry.register_candidate(
+            model=XGBClassifier(),
+            dataset="ADFA-LD",
+            model_type="XGBOOST",
+            feature_names=["f1", "f2"],
+            train_samples=10,
+            val_samples=5,
+            training_config={},
+            metrics={"recall": 0.5},
+            acceptance_decision="REJECTED",
+            rejection_reasons=["Recall below threshold"],
+        )
+        success, msg = registry.promote_candidate(rec.run_id)
+        assert success is False
+        assert "Cannot promote candidate" in msg
+        assert "REJECTED" in msg
+
+    def test_24_corrupted_artifact_hash_fails_promotion(self, isolated_models_env):
+        """SHA-256 verification prevents promotion of tampered/corrupted model artifacts."""
+        registry = ModelRegistry(isolated_models_env)
+        rec = registry.register_candidate(
+            model=XGBClassifier(),
+            dataset="ADFA-LD",
+            model_type="XGBOOST",
+            feature_names=["f1", "f2"],
+            train_samples=10,
+            val_samples=5,
+            training_config={},
+            metrics={"recall": 0.95},
+            acceptance_decision="ACCEPTED",
+        )
+        # Tamper with the artifact
+        artifact_path = Path(rec.artifact_path)
+        artifact_path.write_bytes(b"tampered payload")
+
+        success, err = registry.promote_candidate(rec.run_id)
+        assert success is False
+        assert "hash mismatch" in err.lower()
+
+    def test_25_registry_state_reconciliation_and_sync(self, tmp_path):
+        """Reconciliation handles registry.json (runs) and registry_state.json (candidates)."""
+        models_dir = tmp_path / "models"
+        models_dir.mkdir()
+
+        # Seed legacy registry_state.json with a candidate
+        legacy_state = {
+            "active_models": {
+                "PLAID_XGBOOST": {
+                    "run_id": "legacy_run_1",
+                    "promoted_at": "2026-10-22T00:00:00Z",
+                    "sha256_hash": "legacy_hash",
+                }
+            },
+            "candidates": {
+                "legacy_run_1": {
+                    "run_id": "legacy_run_1",
+                    "dataset": "PLAID",
+                    "model_type": "XGBOOST",
+                    "created_at": "2026-10-22T00:00:00Z",
+                    "sha256_hash": "legacy_hash",
+                    "schema_fingerprint": "legacy_schema",
+                    "train_samples": 50,
+                    "val_samples": 10,
+                    "model_path": str(models_dir / "candidates" / "legacy_run_1" / "model.joblib"),
+                }
+            },
+            "archive": []
+        }
+        with open(models_dir / "registry_state.json", "w", encoding="utf-8") as f:
+            json.dump(legacy_state, f)
+
+        # Initialize registry - should read and reconcile without data loss
+        registry = ModelRegistry(models_dir)
+        state = registry._read_registry_state()
+        assert "legacy_run_1" in state["runs"]
+        assert "legacy_run_1" in state["candidates"]
+        assert state["active_models"]["PLAID_XGBOOST"]["run_id"] == "legacy_run_1"
+
+        # Register a new candidate
+        rec = registry.register_candidate(
+            model=XGBClassifier(),
+            dataset="ADFA-LD",
+            model_type="XGBOOST",
+            feature_names=["f1"],
+            train_samples=20,
+            val_samples=5,
+            training_config={},
+            metrics={},
+            acceptance_decision="ACCEPTED",
+        )
+
+        # Both files should exist and reflect both records
+        with open(models_dir / "registry.json", "r", encoding="utf-8") as f:
+            reg_json = json.load(f)
+        with open(models_dir / "registry_state.json", "r", encoding="utf-8") as f:
+            state_json = json.load(f)
+
+        assert "legacy_run_1" in reg_json["runs"]
+        assert rec.run_id in reg_json["runs"]
+        assert "legacy_run_1" in reg_json["candidates"]
+        assert rec.run_id in reg_json["candidates"]
+
+        assert "legacy_run_1" in state_json["runs"]
+        assert rec.run_id in state_json["runs"]
+        assert "legacy_run_1" in state_json["candidates"]
+        assert rec.run_id in state_json["candidates"]
+
+    def test_26_rollback_metadata_consistency_and_file_restoration(self, tmp_path):
+        """Rollback restores previous model bytes, maintains archive, and sets active_models metadata."""
+        models_dir = tmp_path / "models"
+        models_dir.mkdir()
+        prod_file = models_dir / "xgboost_adfa.joblib"
+
+        registry = ModelRegistry(models_dir)
+
+        # Model 1
+        X_dummy = np.array([[1.0], [2.0]])
+        y_dummy = np.array([0, 1])
+        m1 = XGBClassifier(n_estimators=10, random_state=1)
+        m1.fit(X_dummy, y_dummy)
+        rec1 = registry.register_candidate(
+            model=m1,
+            dataset="ADFA-LD",
+            model_type="XGBOOST",
+            feature_names=["f1"],
+            train_samples=20,
+            val_samples=5,
+            training_config={"n_estimators": 10},
+            metrics={"f1": 0.90},
+            acceptance_decision="ACCEPTED",
+        )
+        success1, _ = registry.promote_candidate(rec1.run_id)
+        assert success1 is True
+        hash1 = compute_sha256(prod_file)
+
+        # Model 2
+        m2 = XGBClassifier(n_estimators=50, random_state=2)
+        m2.fit(X_dummy * 5.0, y_dummy)
+        rec2 = registry.register_candidate(
+            model=m2,
+            dataset="ADFA-LD",
+            model_type="XGBOOST",
+            feature_names=["f1"],
+            train_samples=40,
+            val_samples=10,
+            training_config={"n_estimators": 50},
+            metrics={"f1": 0.95},
+            acceptance_decision="ACCEPTED",
+        )
+        success2, _ = registry.promote_candidate(rec2.run_id)
+        assert success2 is True
+        hash2 = compute_sha256(prod_file)
+        assert hash1 != hash2
+
+        # Rollback
+        success_rb, msg = registry.rollback("ADFA-LD", "XGBOOST")
+        assert success_rb is True
+        assert compute_sha256(prod_file) == hash1
+
+        # Check active_models metadata
+        state = registry._read_registry_state()
+        active = state["active_models"]["ADFA-LD_XGBOOST"]
+        assert active["run_id"] == rec1.run_id
+        assert active["sha256_hash"] == hash1
+        assert "rolled_back_at" in active

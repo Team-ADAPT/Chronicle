@@ -95,6 +95,11 @@ def test_sqlite_storage(tmp_path):
     db.update_alert_status("ALT-001", "ACKNOWLEDGED")
     assert len(db.get_active_alerts(limit=10)) == 0
 
+    db.insert_alert({**alt, "id": "ALT-002", "status": "ACTIVE"})
+    db.insert_alert({**alt, "id": "ALT-003", "status": "ACTIVE"})
+    assert db.update_active_alerts_status("ACKNOWLEDGED") == 2
+    assert len(db.get_active_alerts(limit=10)) == 0
+
 
 def test_plaid_feature_extraction():
     """Verify exact 401 feature vector extraction from syscall names."""
@@ -219,6 +224,66 @@ def test_pipeline_and_api(tmp_path):
     req_ack = json.dumps({"id": alert_id}).encode()
     code, _, body = api.handle_request("POST", "/api/alerts/ack", req_ack)
     assert code == 200
+    assert all(
+        alert["id"] != alert_id
+        for alert in pipeline.db.get_active_alerts(limit=50)
+    )
+
+    # 8. Test POST /api/alerts/ack-all persists acknowledgment for active alerts
+    code, _, body = api.handle_request("POST", "/api/simulate", req_body)
+    assert code == 200
+    second_simulation = json.loads(body.decode())["event"]
+    code, _, body = api.handle_request("POST", "/api/alerts/ack-all")
+    assert code == 200
+    ack_data = json.loads(body.decode())
+    assert ack_data["status"] == "success"
+    assert ack_data["acknowledged_count"] >= 1
+    assert pipeline.db.get_active_alerts(limit=50) == []
+    assert any(
+        event["id"] == second_simulation["id"] and event["status"] == "ANOMALOUS"
+        for event in pipeline.get_events()
+    )
+
+
+def test_process_history_query_and_api(tmp_path):
+    """Verify historical CPU, RAM, Network telemetry retrieval from local DB via API."""
+    db_file = tmp_path / "test_hist.db"
+    db = ChronicleDatabase(db_file)
+    hist = db.get_process_history("python3", days=7)
+    assert hist["comm"] == "python3"
+    assert len(hist["timeline"]) > 0
+    assert "avg_cpu" in hist["summary"]
+    assert "avg_mem" in hist["summary"]
+    assert "avg_net_kb" in hist["summary"]
+
+    cfg = ChronicleConfig(db_path=db_file, enable_ebpf=False)
+    pipeline = ChroniclePipeline(cfg)
+    api = ChronicleAPIHandler(pipeline)
+
+    code, _, body = api.handle_request("GET", "/api/history?comm=nginx&days=3")
+    assert code == 200
+    data = json.loads(body.decode())
+    assert data["comm"] == "nginx"
+    assert data["days"] == 3
+    assert len(data["timeline"]) > 0
+    assert data["summary"]["peak_cpu"] >= 0.0
+
+
+def test_process_cluster_classification():
+    """Verify process clustering logic categorizes programs into correct architectural groups."""
+    from chronicle.collector import classify_process_cluster
+    assert classify_process_cluster("systemd", "root") == "systemd"
+    assert classify_process_cluster("cron", "root") == "systemd"
+    assert classify_process_cluster("udevd", "root") == "systemd"
+    assert classify_process_cluster("nginx", "www-data") == "nginx"
+    assert classify_process_cluster("sshd", "root") == "nginx"
+    assert classify_process_cluster("curl", "anurag") == "nginx"
+    assert classify_process_cluster("bash", "anurag") == "bash"
+    assert classify_process_cluster("zsh", "anurag") == "bash"
+    assert classify_process_cluster("python3", "anurag") == "bash"
+    assert classify_process_cluster("dockerd", "root") == "dockerd"
+    assert classify_process_cluster("containerd", "root") == "dockerd"
+    assert classify_process_cluster("redis-server", "redis") == "dockerd"
 
 
 if __name__ == "__main__":
@@ -239,4 +304,8 @@ if __name__ == "__main__":
         print("  ✓ test_sqlite_storage")
         test_pipeline_and_api(Path(td))
         print("  ✓ test_pipeline_and_api")
+        test_process_history_query_and_api(Path(td))
+        print("  ✓ test_process_history_query_and_api")
+    test_process_cluster_classification()
+    print("  ✓ test_process_cluster_classification")
     print("All Chronicle pipeline & integration tests PASSED!")

@@ -9,7 +9,16 @@ from pathlib import Path
 from typing import Any, Dict, List
 from unittest.mock import MagicMock, patch
 
-import pytest
+try:
+    import pytest
+except ImportError:
+    class _DummyPytest:
+        @staticmethod
+        def fixture(*args, **kwargs):
+            def decorator(fn):
+                return fn
+            return decorator
+    pytest = _DummyPytest()
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -644,6 +653,8 @@ class TestRegressionTask1:
             ROOT / "ML" / "src" / "retrain_pipeline.py"
         )
         mod = importlib.util.module_from_spec(spec)
+        sys.modules["retrain_pipeline"] = mod
+        # Just ensure import doesn't crash
         spec.loader.exec_module(mod)
         assert hasattr(mod, "RetrainingPipeline")
 
@@ -654,6 +665,7 @@ class TestRegressionTask1:
             ROOT / "ML" / "src" / "validate_training_data.py"
         )
         mod = importlib.util.module_from_spec(spec)
+        sys.modules["validate_training_data"] = mod
         spec.loader.exec_module(mod)
         assert hasattr(mod, "TrainingDataValidator")
 

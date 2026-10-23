@@ -182,6 +182,10 @@ def _infer_activity_category(reasons: List[str]) -> str:
         return "IMPACT"
     if "privilege" in joined or "shell" in joined:
         return "PRIVILEGE_ESCALATION"
+    if "xgboost" in joined or "isolation forest" in joined:
+        return "SUSPICIOUS_ML_ANOMALY"
+    if "baseline" in joined or "envelope" in joined or "rolling mean" in joined:
+        return "RESOURCE_DRIFT"
     return "EXECUTION"
 
 
@@ -386,7 +390,7 @@ class RiskEngine:
                 description=f"Kernel syscall frequency is {sys_z:.1f}σ above rolling mean",
             ))
 
-        base_score += stat_contribution
+        base_score += min(_CAP_STAT, stat_contribution)
 
         # ── 2. ML anomaly detection component ────────────────────────────
         ml_contribution = 0.0
@@ -561,10 +565,14 @@ class RiskEngine:
         epoch_for_dedup = int(now_utc.timestamp())
         if event_timestamp:
             try:
-                # event_timestamp is HH:MM:SS; combine with today's date for epoch
-                today = now_utc.strftime("%Y-%m-%d")
-                dt = datetime.strptime(f"{today}T{event_timestamp}", "%Y-%m-%dT%H:%M:%S")
-                dt = dt.replace(tzinfo=timezone.utc)
+                ts_clean = str(event_timestamp).rstrip("Z")
+                if "T" in ts_clean or "-" in ts_clean:
+                    dt = datetime.fromisoformat(str(event_timestamp))
+                else:
+                    today = now_utc.strftime("%Y-%m-%d")
+                    dt = datetime.strptime(f"{today}T{event_timestamp}", "%Y-%m-%dT%H:%M:%S")
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
                 epoch_for_dedup = int(dt.timestamp())
                 ts_source = "event"
             except Exception:

@@ -46,20 +46,24 @@ User Space                     Kernel Space
 
 ## 3. Implementation Details
 
-Chronicle provides two interfaces for telemetry collection:
+Chronicle provides modular telemetry collection mechanisms:
 
 1. **Embedded Live Collector (`src/chronicle/collector.py`):**
    - Integrated directly into the `ChroniclePipeline`.
    - Attaches BCC probes dynamically on Linux kernels.
    - Includes automatic, zero-crash fallback to live host monitoring via `psutil` when running in unprivileged environments, containers, or non-Linux hosts.
 
-2. **Standalone Data Collection Pipeline (`eBPF_collector.py`):**
-   - High-throughput dataset generation utility.
+2. **Standalone Kernel Telemetry Pipeline (`ebpf/collector.py`):**
+   - High-throughput kernel dataset generation utility using BCC tracepoints and kprobes.
    - Emits structured CSV files:
      - `process_instances.csv`: Registered process executions and lifecycles.
      - `telemetry_events.csv`: Raw kernel events with timestamps and arguments.
      - `behaviour_windows.csv`: 5-second aggregated behavioural feature windows.
      - `system_metrics.csv`: Host-wide CPU, memory, and I/O metrics.
+
+3. **Workload & Behaviour Dataset Collector (`ebpf/dataset_collector.py`):**
+   - Automated host telemetry collector with online running statistics and simulated workload profiling.
+   - Generates normalized behavioural windows for offline ML model retraining and evaluation.
 
 ---
 

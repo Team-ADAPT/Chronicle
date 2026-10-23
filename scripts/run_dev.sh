@@ -12,5 +12,11 @@ echo "=================================================="
 # Export PYTHONPATH to ensure both src and root packages resolve
 export PYTHONPATH="${DIR}/src:${DIR}:${PYTHONPATH}"
 
+# Determine Python executable
+PYTHON_BIN="python3"
+if [ -x "${DIR}/.venv/bin/python" ]; then
+    PYTHON_BIN="${DIR}/.venv/bin/python"
+fi
+
 # Run app.py
-exec python3 app.py "$@"
+exec "${PYTHON_BIN}" app.py "$@"
