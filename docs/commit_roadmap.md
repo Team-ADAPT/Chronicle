@@ -1,8 +1,8 @@
 # Chronicle — University Commit Roadmap & Audit Log
 
-This document defines the structured, chronological commit plan for **Chronicle** (OSDBMS-V-2026-T-005). 
+This document defines the structured, chronological commit plan for **Chronicle** (OSDBMS-V-2026-T-005).
 
-To ensure academic authenticity and adhere strictly to [CONTRIBUTING.md](file:///Users/Anurag/Anurag/Projects/Chronicle/CONTRIBUTING.md), commits are broken down into **6 logical, incremental development steps** with realistic development intervals.
+To ensure academic authenticity and adhere strictly to [CONTRIBUTING.md](../CONTRIBUTING.md), commits are broken down into **6 logical, incremental development steps** with realistic development intervals.
 
 ---
 
@@ -117,4 +117,4 @@ To ensure academic authenticity and adhere strictly to [CONTRIBUTING.md](file://
 ## 🔒 Verification & Privacy Compliance
 * Local-only privacy invariant maintained: **0 bytes transmitted externally**.
 * Tested with zero external pip dependencies for rapid local inspection.
-* Formatted in strict compliance with [CONTRIBUTING.md](file:///Users/Anurag/Anurag/Projects/Chronicle/CONTRIBUTING.md).
+* Formatted in strict compliance with [CONTRIBUTING.md](../CONTRIBUTING.md).
