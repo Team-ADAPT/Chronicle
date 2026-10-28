@@ -15,6 +15,11 @@ psutil>=5.9.0,<8.0.0
 # If omitted or unavailable, Chronicle automatically falls back to system browser.
 pywebview>=4.4.0
 
+# --- Menu Bar & System Tray Indicator ---
+# Cross-platform menu bar / status bar indicator icon (macOS status bar, Linux AppIndicator/Tray).
+pystray>=0.19.0
+Pillow>=9.0.0
+
 # --- Scientific Computing & Data Processing ---
 # High-performance multi-dimensional array operations, mathematical transformations,
 # and feature matrix construction.
