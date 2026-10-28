@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "chronicle"
-version = "0.2.0"
+version = "1.0.0"
 description = "Intelligent Host Behaviour Analysis and Activity Monitoring System"
 readme = "README.md"
 requires-python = ">=3.10"

@@ -42,7 +42,7 @@ class ChronicleAPIHandler:
                 if route == "/api/status":
                     res = {
                         "status": "healthy",
-                        "version": "0.2.0",
+                        "version": "1.0.0",
                         "ebpf_active": self.pipeline.collector.ebpf_enabled,
                         "ml_loaded": self.pipeline.ml_engine.loaded,
                         "events_processed": self.pipeline.total_events_processed,
