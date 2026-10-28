@@ -357,11 +357,19 @@ Chronicle/
 
 ---
 
+## 👥 Authors & Core Engineering Team
+
+Chronicle is built and maintained by:
+
+- **[Anurag](https://github.com/the-wilful-youth)** (`@the-wilful-youth`)
+- **[Tanishk Gupta](https://github.com/guptatanishk)** (`@guptatanishk`)
+- **[Divyanshi Singh](https://github.com/DivyanshiSingh07-hub)** (`@DivyanshiSingh07-hub`)
+- **[Prajjwal Singh](https://github.com/prajjwalsingh8705)** (`@prajjwalsingh8705`)
+
+---
+
 ## 📜 License & Credits
 
 Chronicle is licensed under the **[MIT License](LICENSE)**.
 
-Developed as a Project-Based Learning (PBL) initiative by **Team ADAPT**:
-- **Department of Computer Science & Engineering**
-- **Graphic Era (Deemed to be University), Dehradun**
-- **Academic Session 2026–27**
+Developed by **Team ADAPT** (Graphic Era Deemed to be University, Dehradun).

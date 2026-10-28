@@ -3,7 +3,7 @@ Version: 1.0.0-1
 Section: utils
 Priority: optional
 Architecture: all
-Maintainer: Chronicle Team <team@chronicle.local>
+Maintainer: Anurag, Tanishk Gupta, Divyanshi Singh, Prajjwal Singh <chronicle@geu.ac.in>
 Depends: python3 (>= 3.8), python3-psutil
 Recommends: python3-joblib, python3-numpy, python3-pandas, python3-webview, python3-pystray, python3-pil, bpfcc-tools, python3-bpfcc
 Description: Intelligent Host Behaviour Analysis & Activity Monitor

@@ -10,7 +10,10 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [
-    { name = "Team ADAPT", email = "adapt@geu.ac.in" }
+    { name = "Anurag", email = "https://github.com/the-wilful-youth" },
+    { name = "Tanishk Gupta", email = "https://github.com/guptatanishk" },
+    { name = "Divyanshi Singh", email = "https://github.com/DivyanshiSingh07-hub" },
+    { name = "Prajjwal Singh", email = "https://github.com/prajjwalsingh8705" }
 ]
 keywords = [
     "security",
