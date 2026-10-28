@@ -143,8 +143,28 @@ def request_shutdown(signum=None, frame=None):
     _shutdown_event.set()
 
 
+def enforce_linux_debian_environment():
+    """Ensures Chronicle runs strictly on Linux as designed."""
+    if not sys.platform.startswith("linux") and not os.getenv("CHRONICLE_ALLOW_NON_LINUX"):
+        print("=" * 72, file=sys.stderr)
+        print("  ❌ PLATFORM ERROR: Linux Environment Required", file=sys.stderr)
+        print("=" * 72, file=sys.stderr)
+        print("  Chronicle is an enterprise Linux-only host threat detection system.", file=sys.stderr)
+        print("  It requires the Linux kernel eBPF/BCC subsystems, /proc telemetry,", file=sys.stderr)
+        print("  and must be deployed via the Debian (.deb) desktop application.", file=sys.stderr)
+        print("", file=sys.stderr)
+        print("  Supported Distributions: Debian 11/12, Ubuntu 20.04/22.04/24.04, Linux Mint.", file=sys.stderr)
+        print("  Install the Debian package on Linux:", file=sys.stderr)
+        print("    sudo dpkg -i chronicle_1.0.0-1_all.deb", file=sys.stderr)
+        print("    chronicle", file=sys.stderr)
+        print("=" * 72, file=sys.stderr)
+        sys.exit(1)
+
+
 def main():
     global _pipeline, _api_handler, _tray_app
+
+    enforce_linux_debian_environment()
 
     parser = argparse.ArgumentParser(description="Chronicle Host Behaviour Analysis System")
     parser.add_argument("--port", type=int, default=8000, help="Port to bind server (default: 8000)")
