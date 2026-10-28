@@ -1,0 +1,40 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    configure)
+        # Ensure correct permissions
+        chmod 755 /opt/chronicle/chronicle || true
+        chmod -R a+rX /opt/chronicle || true
+
+        # Ensure launcher symlink in /usr/local/bin
+        mkdir -p /usr/local/bin
+        ln -sf /opt/chronicle/chronicle /usr/local/bin/chronicle
+
+        # Update desktop database for application launcher integration
+        if command -v update-desktop-database >/dev/null 2>&1; then
+            update-desktop-database -q /usr/share/applications || true
+        fi
+
+        # Update hicolor icon cache
+        if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+            gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor || true
+        fi
+
+        # Reload systemd configuration if installed as a service
+        if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then
+            systemctl daemon-reload || true
+        fi
+
+        echo "Chronicle v1.0.0 installed successfully."
+        echo "Launch GUI: chronicle"
+        echo "Launch Daemon: sudo systemctl start chronicle (or chronicle --no-gui)"
+        ;;
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+    *)
+        ;;
+esac
+
+exit 0
+

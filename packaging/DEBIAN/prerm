@@ -1,0 +1,18 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    remove|deconfigure|upgrade)
+        if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then
+            systemctl stop chronicle.service >/dev/null 2>&1 || true
+            systemctl disable chronicle.service >/dev/null 2>&1 || true
+        fi
+        ;;
+    failed-upgrade)
+        ;;
+    *)
+        ;;
+esac
+
+exit 0
+

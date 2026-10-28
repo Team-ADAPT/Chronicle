@@ -2,7 +2,7 @@
 Version=1.0
 Name=Chronicle
 Comment=Host Behaviour Analysis & Activity Monitoring System
-Exec=/opt/chronicle/chronicle
+Exec=/usr/local/bin/chronicle
 Icon=chronicle
 Terminal=false
 Type=Application

@@ -94,6 +94,7 @@ pnpm-debug.log*
 *.deb
 *.rpm
 *.AppImage
+chronicle_*_*/
 packaging/build/
 packaging/output/
 *.tar

@@ -1,0 +1,21 @@
+[Unit]
+Description=Chronicle Host Behaviour Analysis & Anomaly Detection Daemon
+Documentation=https://github.com/Team-ADAPT/Chronicle
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/chronicle
+ExecStart=/opt/chronicle/chronicle --no-gui
+Restart=on-failure
+RestartSec=5s
+KillMode=mixed
+TimeoutStopSec=10s
+StandardOutput=journal
+StandardError=journal
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
+
