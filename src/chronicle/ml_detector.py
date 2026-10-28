@@ -13,9 +13,16 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import joblib
-import numpy as np
-import pandas as pd
+try:
+    import joblib
+    import numpy as np
+    import pandas as pd
+    HAS_ML_DEPS = True
+except ImportError:
+    joblib = None
+    np = None
+    pd = None
+    HAS_ML_DEPS = False
 
 warnings.filterwarnings("ignore")
 logger = logging.getLogger("chronicle.ml")
@@ -163,6 +170,11 @@ class MLDetectionEngine:
         self._load_models()
 
     def _load_models(self) -> None:
+        if not HAS_ML_DEPS:
+            logger.info("Optional ML dependencies (joblib, numpy, pandas) not installed; running in statistical baseline mode.")
+            self.loaded = False
+            return
+
         try:
             plaid_cols_path = self.models_dir / "plaid_feature_columns.json"
             if_path = self.models_dir / "isolation_forest_plaid.joblib"
