@@ -177,7 +177,8 @@ class ChronicleDatabase:
     """SQLite local database for structured historical telemetry and alerting."""
 
     def __init__(self, db_path: Path):
-        self.db_path = db_path
+        self.db_path = Path(db_path)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
         self._init_db()
 
@@ -193,6 +194,8 @@ class ChronicleDatabase:
 
     def _init_db(self) -> None:
         with self._lock, self._connection() as conn:
+            conn.execute("PRAGMA journal_mode=WAL;")
+            conn.execute("PRAGMA synchronous=NORMAL;")
             conn.executescript("""
             CREATE TABLE IF NOT EXISTS process_events (
                 id TEXT PRIMARY KEY,

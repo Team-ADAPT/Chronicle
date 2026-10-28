@@ -9,13 +9,46 @@ from pathlib import Path
 from typing import Optional
 
 
+def _resolve_data_dir() -> Path:
+    env_dir = os.environ.get("CHRONICLE_DATA_DIR")
+    if env_dir:
+        p = Path(env_dir)
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
+    # Standard candidate in repo / package root
+    default_dir = Path(__file__).resolve().parents[2] / "data"
+    try:
+        default_dir.mkdir(parents=True, exist_ok=True)
+        test_file = default_dir / ".write_test"
+        test_file.touch()
+        test_file.unlink()
+        return default_dir
+    except (OSError, PermissionError):
+        pass
+
+    # Safe fallback to user local directory
+    user_dir = Path.home() / ".local" / "share" / "chronicle"
+    user_dir.mkdir(parents=True, exist_ok=True)
+    return user_dir
+
+
+def _resolve_db_path() -> Path:
+    env_path = os.environ.get("CHRONICLE_DB_PATH")
+    if env_path:
+        p = Path(env_path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        return p
+    return _resolve_data_dir() / "chronicle.db"
+
+
 @dataclass
 class ChronicleConfig:
     # Base paths
     root_dir: Path = field(default_factory=lambda: Path(__file__).resolve().parents[2])
-    data_dir: Path = field(default_factory=lambda: Path(__file__).resolve().parents[2] / "data")
-    db_path: Path = field(default_factory=lambda: Path(__file__).resolve().parents[2] / "data" / "chronicle.db")
-    profiles_path: Path = field(default_factory=lambda: Path(__file__).resolve().parents[2] / "data" / "profiles.json")
+    data_dir: Path = field(default_factory=_resolve_data_dir)
+    db_path: Path = field(default_factory=_resolve_db_path)
+    profiles_path: Path = field(default_factory=lambda: _resolve_data_dir() / "profiles.json")
 
     # ML Models directory
     ml_models_dir: Path = field(default_factory=lambda: Path(__file__).resolve().parents[2] / "ML" / "models")
