@@ -56,6 +56,8 @@ def load_tray_icon() -> Any:
 
     # Search candidates
     icon_candidates = [
+        Path(getattr(sys, "_MEIPASS", "")) / "ui" / "assets" / "icon.png",
+        Path(getattr(sys, "_MEIPASS", "")) / "packaging" / "chronicle.png",
         Path(__file__).resolve().parents[2] / "packaging" / "chronicle.png",
         Path(__file__).resolve().parents[2] / "ui" / "assets" / "icon.png",
         Path("/usr/share/icons/hicolor/256x256/apps/chronicle.png"),

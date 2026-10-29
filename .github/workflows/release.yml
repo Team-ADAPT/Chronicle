@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build-and-release:
-    name: Build .deb Packages & Publish Release
+    name: Build Black-Box .deb Packages & Publish Release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -22,21 +22,32 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install build tools
+      - name: Install build tools & PyInstaller
         run: |
           sudo apt-get update
-          sudo apt-get install -y dpkg dpkg-dev
+          sudo apt-get install -y dpkg dpkg-dev binutils
+          python -m pip install --upgrade pip
+          pip install pyinstaller psutil
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt || true
+          fi
 
-      - name: Build Debian (.deb) Packages
+      - name: Build Black-Box Debian (.deb) Packages
         run: |
           chmod +x packaging/build_deb.sh packaging/make_deb.py
           ./packaging/build_deb.sh
 
-      - name: Verify generated packages
+      - name: Security Audit: Verify No Source Code Exposed
         run: |
           ls -lh chronicle_*.deb
+          echo "Auditing package contents for exposed source code..."
+          if dpkg -c chronicle_1.0.0-1_all.deb | grep '\.py$'; then
+            echo "FAILED: Raw Python source code detected in release package!"
+            exit 1
+          else
+            echo "PASSED: Zero .py source files found. Black-box protection verified."
+          fi
           dpkg -I chronicle_1.0.0-1_all.deb
-          dpkg -c chronicle_1.0.0-1_all.deb | head -n 30
 
       - name: Publish GitHub Release & Assets
         uses: softprops/action-gh-release@v2
@@ -49,4 +60,3 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
-

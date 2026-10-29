@@ -22,8 +22,14 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
 # Add src to Python path
-BASE_DIR = Path(__file__).resolve().parent
-sys.path.insert(0, str(BASE_DIR / "src"))
+def _resolve_base_dir() -> Path:
+    if getattr(sys, "frozen", False):
+        return Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
+    return Path(__file__).resolve().parent
+
+BASE_DIR = _resolve_base_dir()
+if not getattr(sys, "frozen", False):
+    sys.path.insert(0, str(BASE_DIR / "src"))
 
 from chronicle.api import ChronicleAPIHandler
 from chronicle.config import ChronicleConfig
@@ -31,7 +37,21 @@ from chronicle.pipeline import ChroniclePipeline
 from chronicle.tray import ChronicleTrayApp, is_gui_available
 
 VERSION = "1.0.0"
-UI_DIR = str(BASE_DIR / "ui")
+
+def _resolve_ui_dir() -> str:
+    if getattr(sys, "frozen", False):
+        cand = Path(getattr(sys, "_MEIPASS", "")) / "ui"
+        if cand.exists():
+            return str(cand)
+        cand_opt = Path("/opt/chronicle/ui")
+        if cand_opt.exists():
+            return str(cand_opt)
+        cand_exec = Path(sys.executable).parent / "ui"
+        if cand_exec.exists():
+            return str(cand_exec)
+    return str(BASE_DIR / "ui")
+
+UI_DIR = _resolve_ui_dir()
 
 # Global instances
 _pipeline: ChroniclePipeline | None = None

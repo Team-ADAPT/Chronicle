@@ -50,7 +50,7 @@ def create_tar_gz(source_dir: Path, exclude_prefix: str = "DEBIAN") -> bytes:
 
             # Add files and symlinks
             for fname in files:
-                if fname.endswith(".pyc") or fname == ".DS_Store":
+                if fname == ".DS_Store" or fname.endswith(".py"):
                     continue
                 full_path = os.path.join(root, fname)
                 rel_file = os.path.relpath(full_path, source_dir)

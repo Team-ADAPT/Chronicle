@@ -4,6 +4,7 @@ Chronicle - Configuration module.
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -42,6 +43,28 @@ def _resolve_db_path() -> Path:
     return _resolve_data_dir() / "chronicle.db"
 
 
+def _resolve_models_dir() -> Path:
+    env_models = os.environ.get("CHRONICLE_MODELS_DIR")
+    if env_models:
+        return Path(env_models)
+
+    if getattr(sys, "frozen", False):
+        base = Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
+        if (base / "ML" / "models").exists():
+            return base / "ML" / "models"
+        if (Path(sys.executable).parent / "ML" / "models").exists():
+            return Path(sys.executable).parent / "ML" / "models"
+        if Path("/opt/chronicle/ML/models").exists():
+            return Path("/opt/chronicle/ML/models")
+
+    dev_path = Path(__file__).resolve().parents[2] / "ML" / "models"
+    if dev_path.exists():
+        return dev_path
+    if Path("/opt/chronicle/ML/models").exists():
+        return Path("/opt/chronicle/ML/models")
+    return dev_path
+
+
 @dataclass
 class ChronicleConfig:
     # Base paths
@@ -51,7 +74,7 @@ class ChronicleConfig:
     profiles_path: Path = field(default_factory=lambda: _resolve_data_dir() / "profiles.json")
 
     # ML Models directory
-    ml_models_dir: Path = field(default_factory=lambda: Path(__file__).resolve().parents[2] / "ML" / "models")
+    ml_models_dir: Path = field(default_factory=_resolve_models_dir)
 
     # Telemetry sampling & windows (seconds)
     sample_interval: float = 2.0

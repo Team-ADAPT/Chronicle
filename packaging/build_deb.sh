@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # Chronicle v1.0.0 — Multi-Architecture Debian (.deb) Package Builder
+# Produces protected, compiled black-box application packages (no raw source code).
 # ==============================================================================
 set -e
 
@@ -19,6 +20,7 @@ build_package_for_arch() {
     echo "=================================================="
     echo " Building Chronicle Debian Package: ${OUTPUT_DEB}"
     echo " Architecture: ${ARCH}"
+    echo " Mode: Black-Box Compiled Binary Delivery"
     echo "=================================================="
 
     # 1. Clean previous build artifacts
@@ -27,7 +29,6 @@ build_package_for_arch() {
     # 2. Create package directory layout
     mkdir -p "${PKG_DIR}/DEBIAN"
     mkdir -p "${PKG_DIR}/opt/chronicle/ui"
-    mkdir -p "${PKG_DIR}/opt/chronicle/src/chronicle"
     mkdir -p "${PKG_DIR}/opt/chronicle/database"
     mkdir -p "${PKG_DIR}/opt/chronicle/ML/models"
     mkdir -p "${PKG_DIR}/opt/chronicle/data"
@@ -52,83 +53,84 @@ build_package_for_arch() {
         chmod 755 "${PKG_DIR}/DEBIAN/postrm"
     fi
 
-    # 4. Copy application files into /opt/chronicle
-    cp app.py "${PKG_DIR}/opt/chronicle/"
-    cp requirements.txt "${PKG_DIR}/opt/chronicle/"
+    # 4. Copy assets, models, and schema
     cp -r ui/* "${PKG_DIR}/opt/chronicle/ui/"
-    cp -r src/* "${PKG_DIR}/opt/chronicle/src/"
     cp database/schema.sql "${PKG_DIR}/opt/chronicle/database/"
-
     if [ -d "ML/models" ]; then
         cp -r ML/models/* "${PKG_DIR}/opt/chronicle/ML/models/"
     fi
 
-    # Clean up pycache and temporary files
-    find "${PKG_DIR}" -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-    find "${PKG_DIR}" -type f -name "*.pyc" -delete 2>/dev/null || true
-    find "${PKG_DIR}" -type f -name ".DS_Store" -delete 2>/dev/null || true
+    # 5. Compiled Application Build (Black-Box Protection)
+    if command -v pyinstaller >/dev/null 2>&1; then
+        echo "--> [PyInstaller] Compiling standalone native binary executable..."
+        pyinstaller --onefile \
+            --name chronicle-bin \
+            --paths src \
+            --add-data "ui:ui" \
+            --add-data "ML/models:ML/models" \
+            --add-data "database/schema.sql:database" \
+            --hidden-import "chronicle" \
+            --hidden-import "chronicle.pipeline" \
+            --hidden-import "chronicle.collector" \
+            --hidden-import "chronicle.ml_detector" \
+            --hidden-import "chronicle.risk_engine" \
+            --hidden-import "chronicle.storage" \
+            --hidden-import "chronicle.tray" \
+            --hidden-import "chronicle.service_api" \
+            --hidden-import "chronicle.api" \
+            --hidden-import "chronicle.config" \
+            --distpath "${PKG_DIR}/opt/chronicle" \
+            --workpath /tmp/chronicle_build \
+            --specpath /tmp/chronicle_build \
+            app.py
+        rm -rf /tmp/chronicle_build
+        chmod 755 "${PKG_DIR}/opt/chronicle/chronicle-bin"
 
-    # Optional PyInstaller standalone compilation (Linux)
-    if [[ "$*" == *"--compile"* ]] || [[ "$2" == "--compile" ]]; then
-        if command -v pyinstaller >/dev/null 2>&1; then
-            echo "--> Compiling standalone native ELF binary via PyInstaller..."
-            pyinstaller --onefile \
-                --name chronicle-bin \
-                --paths src \
-                --add-data "ui:ui" \
-                --add-data "ML/models:ML/models" \
-                --distpath "${PKG_DIR}/opt/chronicle" \
-                --workpath /tmp/chronicle_build \
-                --specpath /tmp/chronicle_build \
-                app.py
-            rm -rf /tmp/chronicle_build
-        else
-            echo "Warning: 'pyinstaller' not found; continuing with portable script runtime."
-        fi
-    fi
-
-    # 5. Create the Master Launcher Script
-    cat << 'EOF' > "${PKG_DIR}/opt/chronicle/chronicle"
+        # Production Launcher runs the compiled native binary directly
+        cat << 'EOF' > "${PKG_DIR}/opt/chronicle/chronicle"
 #!/usr/bin/env bash
-# ==============================================================================
-# Chronicle v1.0.0 — Production Application Launcher
-# ==============================================================================
 set -e
-
-# Resolve target installation directory even when invoked via symlink
-CHRONICLE_HOME="/opt/chronicle"
-if [ ! -d "${CHRONICLE_HOME}" ] || [ ! -f "${CHRONICLE_HOME}/app.py" ]; then
-    TARGET_SOURCE="${BASH_SOURCE[0]}"
-    while [ -h "${TARGET_SOURCE}" ]; do
-        TARGET_DIR="$(cd -P "$(dirname "${TARGET_SOURCE}")" >/dev/null 2>&1 && pwd)"
-        TARGET_SOURCE="$(readlink "${TARGET_SOURCE}")"
-        [[ ${TARGET_SOURCE} != /* ]] && TARGET_SOURCE="${TARGET_DIR}/${TARGET_SOURCE}"
-    done
-    CHRONICLE_HOME="$(cd -P "$(dirname "${TARGET_SOURCE}")" >/dev/null 2>&1 && pwd)"
+DIR="/opt/chronicle"
+if [ ! -f "${DIR}/chronicle-bin" ]; then
+    DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")" && pwd)"
 fi
+cd "${DIR}"
+exec "${DIR}/chronicle-bin" "$@"
+EOF
+    else
+        echo "--> [Bytecode Compilation] Compiling into bytecode (.pyc) and stripping all raw .py source files..."
+        mkdir -p "${PKG_DIR}/opt/chronicle/src"
+        cp app.py "${PKG_DIR}/opt/chronicle/"
+        cp -r src/* "${PKG_DIR}/opt/chronicle/src/"
 
-DIR="${CHRONICLE_HOME}"
+        # Compile all to bytecode (.pyc) in place
+        python3 -m compileall -b "${PKG_DIR}/opt/chronicle" >/dev/null 2>&1
+
+        # Strip all raw Python source files completely
+        find "${PKG_DIR}/opt/chronicle" -type f -name "*.py" -delete
+        find "${PKG_DIR}/opt/chronicle" -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+
+        cat << 'EOF' > "${PKG_DIR}/opt/chronicle/chronicle"
+#!/usr/bin/env bash
+set -e
+DIR="/opt/chronicle"
+if [ ! -f "${DIR}/app.pyc" ]; then
+    DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")" && pwd)"
+fi
 cd "${DIR}"
 export PYTHONPATH="${DIR}/src:${DIR}:${PYTHONPATH}"
-
-# 1. Prefer compiled native binary if present
-if [ -x "${DIR}/chronicle-bin" ]; then
-    exec "${DIR}/chronicle-bin" "$@"
-fi
-
-# 2. Check for isolated virtualenv inside /opt/chronicle/.venv
-if [ -x "${DIR}/.venv/bin/python3" ]; then
-    exec "${DIR}/.venv/bin/python3" "${DIR}/app.py" "$@"
-fi
-
-# 3. Fallback to host system python3
 if command -v python3 >/dev/null 2>&1; then
-    exec python3 "${DIR}/app.py" "$@"
+    exec python3 "${DIR}/app.pyc" "$@"
 else
-    echo "Error: Python 3 is required to run Chronicle." >&2
+    echo "Error: Python 3 runtime is required." >&2
     exit 1
 fi
 EOF
+    fi
+
+    # Final security scrub: ensure zero raw source code files exist in package
+    find "${PKG_DIR}/opt/chronicle" -type f -name "*.py" -delete
+    find "${PKG_DIR}" -type f -name ".DS_Store" -delete 2>/dev/null || true
     chmod 755 "${PKG_DIR}/opt/chronicle/chronicle"
 
     # Symlink to /usr/local/bin/chronicle
@@ -152,6 +154,9 @@ EOF
         python3 packaging/make_deb.py "${PKG_DIR}" "${OUTPUT_DEB}"
     fi
 
+    local PY_FILES_COUNT
+    PY_FILES_COUNT=$(find "${PKG_DIR}/opt/chronicle" -name "*.py" 2>/dev/null | wc -l || echo 0)
+    echo " Internal Source Security Check: ${PY_FILES_COUNT} .py source files exposed (0 expected)."
     echo " Successfully generated: ${OUTPUT_DEB} ($(ls -lh "${OUTPUT_DEB}" | awk '{print $5}'))"
     rm -rf "${PKG_DIR}"
 }
@@ -164,9 +169,10 @@ if [ "${TARGET_ARCH}" = "all_targets" ]; then
     echo ""
     echo "=================================================="
     echo " All Debian Packages Built Successfully!"
-    echo " • Universal (all architectures): chronicle_1.0.0-1_all.deb"
-    echo " • ARM64 (Apple Silicon / Graviton): chronicle_1.0.0-1_arm64.deb"
-    echo " • AMD64 (Intel / x86_64 Linux):    chronicle_1.0.0-1_amd64.deb"
+    echo " • Universal: chronicle_1.0.0-1_all.deb"
+    echo " • ARM64:     chronicle_1.0.0-1_arm64.deb"
+    echo " • AMD64:     chronicle_1.0.0-1_amd64.deb"
+    echo " Internal source code completely protected."
     echo "=================================================="
 else
     build_package_for_arch "${TARGET_ARCH}"
