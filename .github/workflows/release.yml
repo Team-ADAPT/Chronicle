@@ -1,0 +1,51 @@
+name: Build and Release Debian Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build .deb Packages & Publish Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg dpkg-dev
+
+      - name: Build Debian (.deb) Packages
+        run: |
+          chmod +x packaging/build_deb.sh packaging/make_deb.py
+          ./packaging/build_deb.sh
+
+      - name: Verify generated packages
+        run: |
+          ls -lh chronicle_*.deb
+          dpkg -I chronicle_1.0.0-1_all.deb
+          dpkg -c chronicle_1.0.0-1_all.deb | head -n 30
+
+      - name: Publish GitHub Release & Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            chronicle_1.0.0-1_all.deb
+            chronicle_1.0.0-1_arm64.deb
+            chronicle_1.0.0-1_amd64.deb
+          name: Chronicle ${{ github.ref_name }} — Production Release
+          draft: false
+          prerelease: false
+          generate_release_notes: true
